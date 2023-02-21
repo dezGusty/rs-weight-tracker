@@ -507,5 +507,90 @@ pub fn add_weight(
 
 did not use rest of cargo.toml changes
 
-## next
+## Input-6
+
+Please create a function for connecting to the database in the library (`lib.rs`)
+Something like.
+
+```rs
 pub fn establish_connection() -> SqliteConnection {
+  // chatgpt code here
+}
+```
+
+Update `add_weight.rs` to use this function to connect the the DB.
+Provide me only with the updated full listings for `lib.rs` and `add_weight.rs` please.
+
+## Output-6
+
+Sure, here are the updated versions of lib.rs and add_weight.rs that include a function for establishing a database connection:
+
+    lib.rs
+
+```rs
+mod models;
+mod schema;
+
+use diesel::prelude::*;
+use dotenv::dotenv;
+use std::env;
+
+pub fn establish_connection() -> SqliteConnection {
+    dotenv().ok();
+
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    SqliteConnection::establish(&database_url).expect(&format!("Error connecting to {}", database_url))
+}
+
+pub fn add_weight(
+    conn: &mut SqliteConnection,
+    weight: &f64,
+    measurement_date: &NaiveDateTime,
+) -> Result<usize, diesel::result::Error> {
+    use models::NewWeight;
+    use schema::weights;
+    let new_weight = NewWeight {
+        weight,
+        measurement_date,
+    };
+    diesel::insert_into(weights::table)
+        .values(&new_weight)
+        .execute(conn)
+}
+
+```
+
+Here we define a new establish_connection function that uses the dotenv crate to load the .env file and the env::var function to get the DATABASE_URL environment variable. Then we use SqliteConnection::establish to create a new connection to the database and return it. We also update the add_weight function to import the NewWeight struct from the models module and the weights table from the schema module.
+
+    add_weight.rs
+
+```rs
+se chrono::NaiveDateTime;
+use my_rust_app::{add_weight, establish_connection};
+use std::{env, error::Error};
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() < 3 {
+        eprintln!("Usage: add_weight [WEIGHT] [TIMESTAMP]");
+        return Ok(());
+    }
+
+    let weight = args[1].parse::<f64>()?;
+    let timestamp = args[2].parse::<i64>()?;
+    let measurement_date = NaiveDateTime::from_timestamp(timestamp, 0);
+
+    let mut conn = establish_connection();
+
+    let count = add_weight(&mut conn, &weight, &measurement_date)?;
+
+    println!("Added {} new weight(s)", count);
+
+    Ok(())
+}
+```
+
+Here we import the add_weight and establish_connection functions from the my_rust_app module and use the establish_connection function to get a new connection to the database. We also update the error message to use the Box<dyn Error> type.
+
+That's it! You should now be able to use the establish_connection function to get a new connection to the database and the add_weight function to add a new weight to the database.
