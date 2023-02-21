@@ -789,3 +789,126 @@ Here, we've added measurement_date.desc() to the order clause to sort the weight
 ## Analysis-8
 
 Argh, forgot again to let GPT know, I really want the connection to be mutable.
+
+## Input-9
+
+Write another small command line binary, `src/bin/import_weights.rs`. This one should import a json file with many entries and add them to the DB.
+An mandatory argument would specify the file name to import from.
+
+```cmd
+cargo run --bin import_weights [filename.json]
+```
+
+The json file will contain data in the format:
+```json
+{
+  "settings": [
+    {
+      "key": "goal"
+    }
+  ],
+  "version": 0,
+  "weights": [
+    {
+      "date": 1528606465849,
+      "weight": 77.3
+    },
+    {
+      "date": 1528694533090,
+      "weight": 76.5
+    },
+    {
+      "date": 1528776792098,
+      "weight": 77.1
+    },
+  ]
+}
+```
+
+Ignore the `settings` and `version` nodes, we only need to import the `weights` data. 
+My version of the `add_weight` function in `lib.rs` uses a mutable connection.
+
+```rs
+pub fn add_weight(
+    conn: &mut SqliteConnection,
+    weight: &f64,
+    measurement_date: &NaiveDateTime,
+) 
+```
+
+When establishing the connection in `src/bin/import_weights.rs`, please use a mutable variable, like this:
+
+```rs
+let mut conn = establish_connection();
+```
+
+Please provide the full content of `src/bin/import_weights.rs`
+
+## Output-9
+
+Sure, here's an example implementation of the import_weights.rs command line binary:
+
+1. Create a new file import_weights.rs with the following content:
+```rs
+use chrono::NaiveDateTime;
+use rs_weight_tracker::{add_weight, establish_connection};
+use serde::Deserialize;
+use std::{env, error::Error, fs::File};
+
+#[derive(Deserialize)]
+struct WeightData {
+    weights: Vec<Weight>,
+}
+
+#[derive(Deserialize)]
+struct Weight {
+    date: i64,
+    weight: f64,
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() != 2 {
+        eprintln!("Usage: import_weights [filename.json]");
+        return Ok(());
+    }
+
+    let filename = &args[1];
+    let file = File::open(filename)?;
+    let data: WeightData = serde_json::from_reader(file)?;
+
+    let mut conn = establish_connection();
+
+    for weight in data.weights {
+        let measurement_date = NaiveDateTime::from_timestamp(weight.date / 1000, 0);
+        let count = add_weight(&mut conn, &weight.weight, &measurement_date)?;
+        println!("Added {} new weight(s)", count);
+    }
+
+    Ok(())
+}
+```
+
+Here we use the serde crate to deserialize the JSON file into a WeightData struct. Then we iterate over the weights and use the add_weight function from the rs_weight_tracker module to add each weight to the database. We also update the error message to use the Box<dyn Error> type.
+
+1. Update the Cargo.toml file to include the new binary:
+
+```toml
+[[bin]]
+name = "import_weights"
+path = "src/bin/import_weights.rs"
+
+```
+
+1. Run the binary with the following command
+
+```sh
+cargo run --bin import_weights [filename.json]
+```
+
+Make sure to replace [filename.json] with the actual name of the JSON file you want to import.
+
+## Analysis-9
+
+GPT forgot to mention the addition of serde to Cargo.toml
