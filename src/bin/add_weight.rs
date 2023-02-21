@@ -14,8 +14,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let timestamp = args[2].parse::<i64>()?;
     let measurement_date = NaiveDateTime::from_timestamp(timestamp, 0);
 
-    let database_url = std::env::var("DATABASE_URL")?;
-    let mut conn = SqliteConnection::establish(&database_url)?;
+    let mut conn = rs_weight_tracker::establish_connection();
 
     let count = rs_weight_tracker::add_weight(&mut conn, &weight, &measurement_date)?;
 
