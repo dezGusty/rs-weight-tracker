@@ -33,3 +33,13 @@ Run the setup. This will create the database file (weight.sqlite) and the `migra
 ```cmd
 diesel setup
 ```
+
+Expand the `Cargo.toml` dependencies to include: `chrono`, `diesel`, `dotenv` and `rusqlite`.
+
+```toml
+[dependencies]
+chrono = "0.4.23"
+diesel = { version = "2.0.3", features = ["chrono", "sqlite"] }
+dotenv = "0.15.0"
+rusqlite = { version = "0.28.0", features = ["bundled"] }
+```
