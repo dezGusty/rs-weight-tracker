@@ -1,6 +1,5 @@
 use chrono::NaiveDateTime;
 use std::{env, error::Error};
-use diesel::prelude::*;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
