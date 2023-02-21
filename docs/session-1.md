@@ -785,3 +785,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 ```
 
 Here, we've added measurement_date.desc() to the order clause to sort the weights by descending measurement_date (i.e., newest weights first). We've also updated the import for weights::dsl::* to avoid a naming conflict with the Weight model.
+
+## Analysis-8
+
+Argh, forgot again to let GPT know, I really want the connection to be mutable.
