@@ -4,6 +4,8 @@
   // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
+
+
     {
       "type": "lldb",
       "request": "launch",
@@ -76,6 +78,42 @@
         }
       },
       "args": ["80.1", "1530676937227"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug executable 'import_weights'",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=import_weights",
+          "--package=rs-weight-tracker"
+        ],
+        "filter": {
+          "name": "import_weights",
+          "kind": "bin"
+        }
+      },
+      "args": ["./sample.json"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug executable 'show_weights'",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=show_weights",
+          "--package=rs-weight-tracker"
+        ],
+        "filter": {
+          "name": "show_weights",
+          "kind": "bin"
+        }
+      },
+      "args": [],
       "cwd": "${workspaceFolder}"
     },
     {

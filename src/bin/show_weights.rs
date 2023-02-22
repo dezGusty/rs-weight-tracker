@@ -20,8 +20,8 @@ fn main() -> Result<(), Box<dyn Error>> {
       println!(
           "{:>3}. {:<10} {}",
           entry.id,
-          entry.weight,
-          entry.measurement_date.format("%Y-%m-%d %H:%M:%S")
+          entry.weight_value,
+          entry.measurement_date.format("%Y-%m-%d")
       );
   }
 

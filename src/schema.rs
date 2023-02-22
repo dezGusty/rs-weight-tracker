@@ -3,7 +3,7 @@
 diesel::table! {
     weights (id) {
         id -> Integer,
-        weight -> Double,
-        measurement_date -> Timestamp,
+        weight_value -> Double,
+        measurement_date -> Date,
     }
 }

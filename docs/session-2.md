@@ -212,3 +212,176 @@ Copy the content for up and down.sql
 diesel migration run
 diesel migration redo
 ```
+
+Instead of using the old field name, we'll update the field in the model as well
+
+```rs
+#[column_name = "weight_value"]
+pub weight: f64,
+```
+
+becomes
+
+```rs
+
+pub struct Weight {
+    pub id: i32,
+    pub weight_value: f64,
+    pub measurement_date: NaiveDate,
+}
+```
+
+Some miscenllaneous changes - moved upsert functionality to lib.
+
+## Input 3
+
+Please add a function in `lib.rs` to return the entries between a start-date and an end-date. Use this function from a new script, stored in `src/bin/show_weight_interval.rs`.
+Two mandatory arguments would specify the start and end dates, preferable as strings.
+
+```cmd
+cargo run --bin show_weight_interval [start] [end]
+```
+
+E.g.
+
+```cmd
+cargo run --bin show_weight_interval 2023-01-20 2023-02-22
+```
+
+Remember, When establishing the connection in `src/bin/show_weight_interval.rs`, please use a mutable variable, like this:
+
+```rs
+let mut conn = establish_connection();
+```
+
+## Output 3
+
+Sure, here's the updated lib.rs with a new function to retrieve weights between a start and end date, and the show_weight_interval.rs script to display weights within the specified interval:
+
+lib.rs:
+
+```rust
+
+use chrono::{NaiveDate, NaiveDateTime};
+use diesel::prelude::*;
+use rs_weight_tracker::models::Weight;
+use rs_weight_tracker::schema::weights::dsl::*;
+
+pub fn weights_between_dates(
+    conn: &SqliteConnection,
+    start_date: NaiveDate,
+    end_date: NaiveDate,
+) -> QueryResult<Vec<Weight>> {
+    weights
+        .filter(measurement_date.ge(start_date))
+        .filter(measurement_date.le(end_date))
+        .order(measurement_date.asc())
+        .load::<Weight>(conn)
+}
+
+pub fn establish_connection() -> SqliteConnection {
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    SqliteConnection::establish(&database_url)
+        .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
+}
+```
+
+show_weight_interval.rs:
+
+```rust
+
+use rs_weight_tracker::{establish_connection, models::Weight};
+use std::{env, error::Error};
+use chrono::{NaiveDate, ParseError, Datelike};
+use diesel::prelude::*;
+
+fn parse_date(date_string: &str) -> Result<NaiveDate, ParseError> {
+    let mut parts = date_string.split('-');
+    let year_str = parts.next().ok_or(ParseError::InvalidYear)?;
+    let year = year_str.parse::<i32>()?;
+    let month_str = parts.next().ok_or(ParseError::InvalidMonth)?;
+    let month = month_str.parse::<u32>()?;
+    let day_str = parts.next().ok_or(ParseError::InvalidDay)?;
+    let day = day_str.parse::<u32>()?;
+    Ok(NaiveDate::from_ymd(year, month, day))
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() != 3 {
+        eprintln!("Usage: show_weight_interval [START_DATE] [END_DATE]");
+        std::process::exit(1);
+    }
+
+    let start_date = parse_date(&args[1])?;
+    let end_date = parse_date(&args[2])?;
+
+    let conn = &mut establish_connection();
+    let weights = weights_between_dates(conn, start_date, end_date)?;
+
+    println!("Displaying {} weight(s)", weights.len());
+    for weight in weights {
+        println!(
+            "{}: {:.1} kg",
+            weight.measurement_date.format("%Y-%m-%d"),
+            weight.weight
+        );
+    }
+
+    Ok(())
+}
+```
+
+Here, we've added a weights_between_dates function to lib.rs that takes a connection, a start date, and an end date, and retrieves all weights between those dates. We've also added a parse_date function to show_weight_interval.rs that parses a date string in the format "YYYY-MM-DD" into a NaiveDate. The main function in show_weight_interval.rs then retrieves the start and end dates from the command-line arguments, calls weights_between_dates to retrieve the weights in the specified interval, and displays the weights.
+
+## Analysis 3
+
+ChatGPT keeps using the non mutable definition DB access.
+The correct definition would be this.
+Also, just as a preferance, the use is moved into the function.
+
+```rs
+pub fn weights_between_dates(
+    conn: &mut SqliteConnection,
+    start_date: NaiveDate,
+    end_date: NaiveDate,
+) -> QueryResult<Vec<Weight>> {
+    use crate::schema::weights::dsl::*;
+    weights
+        .filter(measurement_date.ge(start_date))
+        .filter(measurement_date.le(end_date))
+        .order(measurement_date.asc())
+        .load::<Weight>(conn)
+}
+```
+
+I don't know where it took ParseError::InvalidDay and the similar errors.
+Ended up with an own version:
+
+Realized another unnoticed error: the upsert_weight function updates the entire table. A filter needs to be added.
+
+```rust
+pub fn upsert_weight(
+    conn: &mut SqliteConnection,
+    in_weight_value: f64,
+    in_measurement_date: NaiveDate,
+) -> QueryResult<usize> {
+    use crate::schema::weights::dsl::*;
+    use diesel::{prelude::*, update};
+
+    let existing_weight = weights
+        .filter(measurement_date.eq(in_measurement_date))
+        .first::<Weight>(conn)
+        .optional()?;
+
+    if let Some(existing_weight) = existing_weight {
+        update(weights)
+            .filter(id.eq(existing_weight.id))
+            .set(weight_value.eq(in_weight_value))
+            .execute(conn)
+    } else {
+        add_weight(conn, in_weight_value, in_measurement_date)
+    }
+}
+```
