@@ -14,6 +14,11 @@ I went through Microsoft's tutorial on Rust a while back. You can find it here: 
 
 I had forgotten many things, so I had to also re-read some chapters of the book: <https://doc.rust-lang.org/book/>
 
+So the prerequisites are:
+
+- know at least some basics of the Rust language
+- have a development environment based on Rust set-up already (E.g. <https://www.rust-lang.org/learn/get-started>)
+
 ## Project set-up
 
 The initial project set-up operation is described here: [step-by-step](./docs/step-by-step.md)
