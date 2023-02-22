@@ -1,4 +1,5 @@
 # rs-weight-tracker
+
 A Rust based weight tracker, implemented with the help of AI assistance (E.g. ChatGPT)
 
 ## Goal
@@ -29,9 +30,20 @@ There may be some missing steps about the SQLite set-up; will have to re-visit.
 ### Session 1
 
 Covers:
+
 - adding migrations to the DB
 - writing operation for adding weights
 - writing operation for displaying weights
 - writing operation for importing many weights from a json file
 
 Can be found here: [session-1](./docs/session-1.md)
+
+## Setting up locally
+
+You will need the prerequisites.
+
+And run
+
+```cmd
+diesel migration run
+```
