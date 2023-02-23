@@ -55,14 +55,16 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let mut conn = rs_weight_tracker::establish_connection();
-    let weights = rs_weight_tracker::weights_between_dates(&mut conn, start_date, end_date)?;
+    // let weights = rs_weight_tracker::weights_between_dates(&mut conn, start_date, end_date)?;
+    let weights = rs_weight_tracker::weights_between_dates_with_interpolation(&mut conn, start_date, end_date)?;
 
     println!("Displaying {} weight(s)", weights.len());
     for weight in weights {
         println!(
-            "{}: {:.1} kg",
-            weight.measurement_date.format("%Y-%m-%d"),
-            weight.weight_value
+            "{}: {:.1} kg {}",
+            weight.0.measurement_date.format("%Y-%m-%d"),
+            weight.0.weight_value,
+            weight.1
         );
     }
 
