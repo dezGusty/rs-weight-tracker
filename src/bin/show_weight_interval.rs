@@ -68,7 +68,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         );
     }
 
-    let averages = rs_weight_tracker::rolling_average_between_dates(&mut conn, start_date, end_date, 3)?;
+    let averages = rs_weight_tracker::rolling_average_between_dates(
+        &mut conn, 
+        start_date, 
+        end_date, 
+        7)?;
     println!("Displaying {} average(s)", averages.len());
     for weight in averages {
         println!(

@@ -174,40 +174,35 @@ pub fn rolling_average_between_dates(
 ) -> QueryResult<Vec<(NaiveDate, f64)>> {
     assert!(amount_of_days > 0 && amount_of_days <= 7);
 
-    let weights = weights_between_dates_with_interpolation(conn, start_date, end_date)?;
+    let start_date_in_advance = start_date - chrono::Duration::days(amount_of_days as i64 - 1);
 
-    let mut date_weights = Vec::new();
-    for (weight, is_interpolated) in weights {
-        if is_interpolated {
-            continue;
+    let weights = weights_between_dates_with_interpolation(conn, start_date_in_advance, end_date)?;
+
+    let mut rolling_window: Vec<f64> = vec![0.0; amount_of_days as usize];
+    let mut rolling_sum = 0.0;
+    let mut results = Vec::new();
+
+    for (weight, is_interpolated) in &weights {
+        let value = weight.weight_value;
+        rolling_sum += value;
+
+        if rolling_window.len() == amount_of_days as usize {
+            rolling_sum -= rolling_window[0];
+            rolling_window.remove(0);
         }
-        date_weights.push((weight.measurement_date, weight.weight_value));
+
+        rolling_window.push(value);
+
+        let days = (weight.measurement_date - start_date_in_advance).num_days() as u32;
+
+        if days >= amount_of_days - 1 {
+            let average = rolling_sum / rolling_window.len() as f64;
+            results.push((
+                weight.measurement_date,
+                average,
+            ));
+        }
     }
 
-    let mut rolling_averages = Vec::new();
-    let mut sum = 0.0;
-    let mut count = 0;
-    let mut window = date_weights.iter().rev().take(amount_of_days as usize);
-    let mut date = start_date;
-    while date <= end_date {
-        while let Some(&(window_date, weight)) = window.last() {
-            if window_date != date {
-                break;
-            }
-            window.next();
-            sum += weight;
-            count += 1;
-        }
-        if count > 0 {
-            let rolling_average = sum / count as f64;
-            rolling_averages.push((date, rolling_average));
-        }
-        if let Some(&(window_date, _)) = window.next() {
-            sum -= date_weights.iter().rev().skip(amount_of_days as usize).take_while(|&&(d, _)| d == window_date).map(|&(_, w)| w).sum::<f64>();
-            count -= date_weights.iter().rev().skip(amount_of_days as usize).take_while(|&&(d, _)| d == window_date).count();
-        }
-        date = date.succ();
-    }
-
-    Ok(rolling_averages)
+    Ok(results)
 }

@@ -382,6 +382,7 @@ pub fn rolling_average_between_dates(
     Ok(rolling_averages)
 }
 ```
+
 This implementation first obtains the weight measurements between start_date and end_date using weights_between_dates_with_interpolation. Then it extracts the dates and weight values into a separate Vec<(NaiveDate, f64)> called date_weights.
 
 Next, it initializes an empty Vec<(NaiveDate, f64)> called rolling_averages to hold the resulting rolling averages. It then initializes a few variables to keep track of the sum of weights in the rolling window, the number of weights in the rolling window, and the current window of weights.
@@ -395,4 +396,143 @@ This implementation uses a rolling window of weights to compute the rolling aver
 ## Analysis 5
 
 The Rust compiler complains about a moved iterator
-window.last() 
+window.last()
+
+Also, it seems that the interpolated values are ommitted.
+
+## Input 6
+
+I want to take the interpolated dates into account as well. So I think that the following code block should not used:
+
+```rust
+if is_interpolated {
+    continue;
+}
+```
+
+Please also change the implementation for `rolling_average_between_dates` so that you get the data from `weights_between_dates_with_interpolation` you also obtain the weight data for [amount_of_days - 1] in advance.
+
+E.g.
+
+```rust
+let start_date_in_advance = 0;
+//[please compute it from start_date]
+let weights = weights_between_dates_with_interpolation(conn, start_date_in_advance, end_date)?;
+
+```
+
+With the available data, get the rolling average for the interval start_date - end_date.
+
+## Output 6
+
+Thanks for the clarification. Here is an updated implementation of weights_between_dates_with_interpolation that takes the interpolated values into account:
+
+```rust
+
+pub fn weights_between_dates_with_interpolation(
+    conn: &mut SqliteConnection,
+    start_date: NaiveDate,
+    end_date: NaiveDate,
+) -> QueryResult<Vec<(Weight, bool)>> {
+    let mut weights = Vec::new();
+    let mut last_value: Option<Weight> = None;
+
+    for date in start_date.naive_utc().date().num_days_from_ce()..=end_date.naive_utc().date().num_days_from_ce() {
+        let nd = NaiveDate::from_num_days_from_ce(date);
+        if let Ok(weight) = Weight::belonging_to(&conn)
+            .filter(measurement_date.eq(nd))
+            .first::<Weight>(conn)
+        {
+            weights.push((weight, true));
+            last_value = Some(weight);
+        } else if let Some(last_value) = last_value {
+            let is_interpolated = true;
+            let interpolated_weight = Weight {
+                id: 0,
+                weight_value: last_value.weight_value,
+                measurement_date: nd,
+            };
+            weights.push((interpolated_weight, is_interpolated));
+        }
+    }
+
+    Ok(weights)
+}
+```
+
+And here is the implementation of rolling_average_between_dates that takes the interpolated weights into account and gets the data for the extra days in advance:
+
+```rust
+
+pub fn rolling_average_between_dates(
+    conn: &mut SqliteConnection,
+    start_date: NaiveDate,
+    end_date: NaiveDate,
+    amount_of_days: u32,
+) -> QueryResult<Vec<(NaiveDate, f64)>> {
+    if amount_of_days == 0 {
+        return Err(diesel::result::Error::QueryBuilderError(
+            "Amount of days must be greater than 0".into(),
+        ));
+    }
+
+    let start_date_in_advance = start_date - chrono::Duration::days(amount_of_days as i64 - 1);
+
+    let mut weights = weights_between_dates_with_interpolation(conn, start_date_in_advance, end_date)?;
+
+    let mut rolling_window: Vec<f64> = vec![0.0; amount_of_days as usize];
+    let mut rolling_sum = 0.0;
+    let mut results = Vec::new();
+
+    for (weight, is_interpolated) in &weights {
+        let value = weight.weight_value;
+        rolling_sum += value;
+
+        if rolling_window.len() == amount_of_days as usize {
+            rolling_sum -= rolling_window[0];
+            rolling_window.remove(0);
+        }
+
+        rolling_window.push(value);
+
+        let days = (weight.measurement_date - start_date).num_days() as u32;
+
+        if days >= amount_of_days - 1 {
+            let average = rolling_sum / rolling_window.len() as f64;
+            results.push((
+                weight.measurement_date,
+                average,
+                *is_interpolated,
+            ));
+        }
+    }
+
+    Ok(results)
+}
+```
+
+The rolling_average_between_dates function first calculates the start_date_in_advance and then obtains the data for the extended interval. It then initializes a rolling window to calculate the rolling average for each date in the interval. The function loops through the obtained weights and adds them to the rolling window. If the rolling window is full, it removes the oldest weight and updates the rolling sum. If the date is later than the start date plus the rolling window size, it calculates the rolling average and adds it to the results vector.
+
+## Analysis 6
+
+Minor mistakes
+
+```rust
+let days = (weight.measurement_date - start_date_in_advance).num_days() as u32;
+```
+
+Results does not need the interpolation flag
+
+```rust
+results.push((
+    weight.measurement_date,
+    average,
+    *is_interpolated,
+));
+```
+
+Also, weights does not need to be mutable
+
+```rust
+let weights = weights_between_dates_with_interpolation(conn, start_date_in_advance, end_date)?;
+```
