@@ -68,5 +68,15 @@ fn main() -> Result<(), Box<dyn Error>> {
         );
     }
 
+    let averages = rs_weight_tracker::rolling_average_between_dates(&mut conn, start_date, end_date, 3)?;
+    println!("Displaying {} average(s)", averages.len());
+    for weight in averages {
+        println!(
+            "{}: {:.1} kg",
+            weight.0.format("%Y-%m-%d"),
+            weight.1
+        );
+    }
+
     Ok(())
 }
