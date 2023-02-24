@@ -11,8 +11,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let weight = args[1].parse::<f64>()?;
     let timestamp = args[2].parse::<i64>()?;
-    let measurement_datetime: NaiveDateTime = NaiveDateTime::from_timestamp(timestamp, 0);
-    // let measurement_date = NaiveDate::from_timestamp(timestamp, 0);
+    let measurement_datetime =
+        NaiveDateTime::from_timestamp_opt(timestamp, 0).ok_or("Invalid timestamp")?;
 
     if let Some(measurement_date) = NaiveDate::from_ymd_opt(
         measurement_datetime.year(),

@@ -1,4 +1,4 @@
-use chrono::NaiveDate;
+use chrono::{NaiveDate, Local};
 
 use std::{env, error::Error};
 
@@ -33,6 +33,8 @@ fn parse_date(date_string: &str) -> Result<NaiveDate, LocalParseError> {
     if let Some(result) = NaiveDate::from_ymd_opt(year, month, day) {
         return Ok(result);
     }
+
+    Err(LocalParseError{ message: String::from("invalid date")})
 
     // Ok(LocalParseError {
     //     message: String::from("year problem"));
