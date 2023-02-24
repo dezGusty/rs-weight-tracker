@@ -1,4 +1,6 @@
-use chrono::{NaiveDate, Local};
+// show_weight_interval.rs
+
+use chrono::{NaiveDate};
 
 use std::{env, error::Error};
 
@@ -35,15 +37,6 @@ fn parse_date(date_string: &str) -> Result<NaiveDate, LocalParseError> {
     }
 
     Err(LocalParseError{ message: String::from("invalid date")})
-
-    // Ok(LocalParseError {
-    //     message: String::from("year problem"));
-    
-    // match result {
-    //     Some() => Ok(converted)?,
-    //     None => weights.load::<Weight>(&mut conn)?,
-    // }
-    // Ok(NaiveDate::from_ymd(year, month, day))
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -68,7 +61,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let mut conn = rs_weight_tracker::establish_connection();
-    // let weights = rs_weight_tracker::weights_between_dates(&mut conn, start_date, end_date)?;
     let weights = rs_weight_tracker::weights_between_dates_with_interpolation(
         &mut conn, start_date, end_date,
     )?;
