@@ -584,4 +584,28 @@ Here is an updated HTML page that uses Chart.js to display the data as a line ch
   </body>
 </html>
 ```
+
 This HTML page adds a canvas element to display the chart. It uses the Chart constructor to create a line chart with the data returned by the API.
+
+## Analysis 5
+
+Ok, this is impressive. It works.
+One small change is recommended: the chart configuration is better represented if we set beginAtZero: false
+We're displaying weights, so the chart will look very much like a straight line if we start at zer0.
+
+```js
+new Chart(chartCanvas, {
+  type: 'line',
+  data: chartData,
+  options: {
+    scales: {
+      y: {
+        beginAtZero: false
+      }
+    }
+  }
+});
+```
+
+Nice things: the rolling average term was propagated all the way to this chart.
+Automatically identified what type of chart to use and what to use for axis data.
