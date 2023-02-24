@@ -30,7 +30,18 @@ fn parse_date(date_string: &str) -> Result<NaiveDate, LocalParseError> {
         message: String::from("day problem"),
     })?;
     let day = day_str.parse::<u32>()?;
-    Ok(NaiveDate::from_ymd(year, month, day))
+    if let Some(result) = NaiveDate::from_ymd_opt(year, month, day) {
+        return Ok(result);
+    }
+
+    // Ok(LocalParseError {
+    //     message: String::from("year problem"));
+    
+    // match result {
+    //     Some() => Ok(converted)?,
+    //     None => weights.load::<Weight>(&mut conn)?,
+    // }
+    // Ok(NaiveDate::from_ymd(year, month, day))
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -56,7 +67,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut conn = rs_weight_tracker::establish_connection();
     // let weights = rs_weight_tracker::weights_between_dates(&mut conn, start_date, end_date)?;
-    let weights = rs_weight_tracker::weights_between_dates_with_interpolation(&mut conn, start_date, end_date)?;
+    let weights = rs_weight_tracker::weights_between_dates_with_interpolation(
+        &mut conn, start_date, end_date,
+    )?;
 
     println!("Displaying {} weight(s)", weights.len());
     for weight in weights {
@@ -68,18 +81,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         );
     }
 
-    let averages = rs_weight_tracker::rolling_average_between_dates(
-        &mut conn, 
-        start_date, 
-        end_date, 
-        7)?;
+    let averages =
+        rs_weight_tracker::rolling_average_between_dates(&mut conn, start_date, end_date, 7)?;
     println!("Displaying {} average(s)", averages.len());
     for weight in averages {
-        println!(
-            "{}: {:.1} kg",
-            weight.0.format("%Y-%m-%d"),
-            weight.1
-        );
+        println!("{}: {:.1} kg", weight.0.format("%Y-%m-%d"), weight.1);
     }
 
     Ok(())
