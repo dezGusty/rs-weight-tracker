@@ -500,3 +500,88 @@ Here's the full code:
 ```
 
 I want to display the data as a chart. What's an easy way to refactor this page to do that ?
+
+## Output 5
+
+One option to display the data as a chart is to use a library such as Chart.js.
+
+Here is an updated HTML page that uses Chart.js to display the data as a line chart:
+
+```html
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Rolling Average</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <form>
+      <label for="start-date">Start Date:</label>
+      <input type="date" id="start-date" name="start-date"><br>
+
+      <label for="end-date">End Date:</label>
+      <input type="date" id="end-date" name="end-date"><br>
+
+      <label for="days">Days:</label>
+      <input type="number" id="days" name="days" min="1" max="7" value="7"><br>
+
+      <button type="submit" id="submit">Submit</button>
+    </form>
+
+    <div style="width: 600px; height: 400px">
+      <canvas id="chart"></canvas>
+    </div>
+
+    <script>
+      const form = document.querySelector('form');
+      const chartCanvas = document.querySelector('#chart');
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+        const days = document.getElementById('days').value;
+
+        fetch(`/api/rolling_average?start_date=${startDate}&end_date=${endDate}&days=${days}`)
+          .then(response => response.json())
+          .then(data => {
+            const labels = data.map(entry => entry.date);
+            const values = data.map(entry => entry.average.toFixed(1));
+
+            const chartData = {
+              labels: labels,
+              datasets: [
+                {
+                  label: 'Rolling Average',
+                  data: values,
+                  fill: false,
+                  borderColor: 'rgb(75, 192, 192)',
+                  tension: 0.1
+                }
+              ]
+            };
+
+            new Chart(chartCanvas, {
+              type: 'line',
+              data: chartData,
+              options: {
+                scales: {
+                  y: {
+                    beginAtZero: true
+                  }
+                }
+              }
+            });
+          })
+          .catch(error => {
+            console.error(error);
+          });
+      });
+    </script>
+  </body>
+</html>
+```
+This HTML page adds a canvas element to display the chart. It uses the Chart constructor to create a line chart with the data returned by the API.
