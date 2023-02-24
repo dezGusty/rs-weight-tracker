@@ -271,3 +271,232 @@ fn rocket() -> _ {
 ```
 
 Starting from this correct version, help me refactor it so that it returns the data in Json format instead of plain text.
+
+## Output 3
+
+Sure, here's an updated version of the rolling_average function that returns the data in JSON format:
+
+```rust
+
+#[get("/rolling_average?<start_date>&<end_date>&<days>")]
+fn rolling_average(start_date: String, end_date: String, days: u32) -> Json<Vec<serde_json::Value>> {
+    let start_date = NaiveDate::parse_from_str(&start_date, "%Y-%m-%d").unwrap();
+    let end_date = NaiveDate::parse_from_str(&end_date, "%Y-%m-%d").unwrap();
+
+    let mut conn = rs_weight_tracker::establish_connection();
+    let averages = rs_weight_tracker::rolling_average_between_dates(&mut conn, start_date, end_date, days).unwrap();
+
+    let result = averages.into_iter()
+        .map(|(date, avg)| {
+            let mut map = serde_json::Map::new();
+            map.insert("date".to_string(), serde_json::Value::String(date.format("%Y-%m-%d").to_string()));
+            map.insert("average".to_string(), serde_json::Value::Number(serde_json::Number::from_f64(avg).unwrap()));
+            serde_json::Value::Object(map)
+        })
+        .collect::<Vec<serde_json::Value>>();
+
+    Json(result)
+}
+```
+
+This updated version uses the Json type from Rocket to serialize the result as JSON. We're also returning a vector of JSON objects with two fields each: date and average.
+
+## Analysis 3
+
+small note: also need to import Json
+
+```rust
+use rocket::serde::json::Json;
+```
+
+But other than that: this one simply works.
+
+## Input 4
+
+What would be an easy way to add a front-end page, calling this API ?
+
+## Output 4
+
+To add a front-end page to call this API, you could use any front-end framework or library of your choice, such as React, Vue, Angular, or vanilla JavaScript, to make a request to the API endpoint and display the returned data in the page.
+
+Here is an example of how you could use vanilla JavaScript to make a request to the API and display the returned data in an HTML table:
+
+```html
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Rolling Average</title>
+  </head>
+  <body>
+    <form>
+      <label for="start-date">Start Date:</label>
+      <input type="date" id="start-date" name="start-date"><br>
+
+      <label for="end-date">End Date:</label>
+      <input type="date" id="end-date" name="end-date"><br>
+
+      <label for="days">Days:</label>
+      <input type="number" id="days" name="days" min="1" max="7" value="7"><br>
+
+      <button type="submit" id="submit">Submit</button>
+    </form>
+
+    <table id="result-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Weight</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <script>
+      const form = document.querySelector('form');
+      const tableBody = document.querySelector('table tbody');
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+        const days = document.getElementById('days').value;
+
+        fetch(`/api/rolling_average?start_date=${startDate}&end_date=${endDate}&days=${days}`)
+          .then(response => response.json())
+          .then(data => {
+            tableBody.innerHTML = '';
+            data.forEach(entry => {
+              const row = document.createElement('tr');
+              const dateCell = document.createElement('td');
+              const weightCell = document.createElement('td');
+
+              dateCell.textContent = entry.date;
+              weightCell.textContent = `${entry.weight.toFixed(1)} kg`;
+
+              row.appendChild(dateCell);
+              row.appendChild(weightCell);
+
+              tableBody.appendChild(row);
+            });
+          })
+          .catch(error => {
+            console.error(error);
+          });
+      });
+    </script>
+  </body>
+</html>
+```
+
+This code creates a form with inputs for the start date, end date, and number of days, and a button to submit the form. When the form is submitted, the JavaScript code makes a request to the API endpoint with the values from the form inputs, and displays the returned data in an HTML table.
+
+Note that this is just a simple example, and there are many ways to implement a front-end page that calls an API. The code could be improved with error handling, input validation, and better styling.
+
+## Analysis 4
+
+Quite well. While ChatGPT does not provide info on how to also serve the page, a nice option would be to store the content of the html file in a file in the repository (E.g. `static/index.html`).
+Rocket can serve that page easily with the following minor change:
+
+```rust
+
+use rocket::fs::{relative, FileServer};
+
+#[rocket::launch]
+fn rocket() -> _ {
+    rocket::build()
+        .mount("/", FileServer::from(relative!("static")))
+        .mount("/api", routes![rolling_average])
+}
+
+```
+
+One mistake GhatGPT makes is to assume 'weight' being used. The concept behind it is a weight, but the field is identified as an 'average'.
+So this needs to be fixed:
+
+```js
+weightCell.textContent = `${entry.average.toFixed(1)} kg`;
+```
+
+## Input 5
+
+Thanks, that is very close. Instead of `weight`, the correct property for entry is `average`
+
+```js
+weightCell.textContent = `${entry.average.toFixed(1)} kg`;
+```
+
+Here's the full code:
+
+```html
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Rolling Average</title>
+  </head>
+  <body>
+    <form>
+      <label for="start-date">Start Date:</label>
+      <input type="date" id="start-date" name="start-date"><br>
+
+      <label for="end-date">End Date:</label>
+      <input type="date" id="end-date" name="end-date"><br>
+
+      <label for="days">Days:</label>
+      <input type="number" id="days" name="days" min="1" max="7" value="7"><br>
+
+      <button type="submit" id="submit">Submit</button>
+    </form>
+
+    <table id="result-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Weight</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <script>
+      const form = document.querySelector('form');
+      const tableBody = document.querySelector('table tbody');
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+        const days = document.getElementById('days').value;
+
+        fetch(`/api/rolling_average?start_date=${startDate}&end_date=${endDate}&days=${days}`)
+          .then(response => response.json())
+          .then(data => {
+            tableBody.innerHTML = '';
+            data.forEach(entry => {
+              const row = document.createElement('tr');
+              const dateCell = document.createElement('td');
+              const weightCell = document.createElement('td');
+
+              dateCell.textContent = entry.date;
+              weightCell.textContent = `${entry.average.toFixed(1)} kg`;
+
+              row.appendChild(dateCell);
+              row.appendChild(weightCell);
+
+              tableBody.appendChild(row);
+            });
+          })
+          .catch(error => {
+            console.error(error);
+          });
+      });
+    </script>
+  </body>
+</html>
+```
+
+I want to display the data as a chart. What's an easy way to refactor this page to do that ?

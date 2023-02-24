@@ -1,19 +1,66 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Rolling Average</title>
+  </head>
+  <body>
+    <form>
+      <label for="start-date">Start Date:</label>
+      <input type="date" id="start-date" name="start-date"><br>
 
-<head>
-  <meta charset="utf-8">
-  <meta name="theme-color" content="#113844">
-  <title>weight-tracker</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <noscript>
-    <p>This page might not need JavaScript, but it's still strange that no support was detected.</p>
-  </noscript>
-</head>
+      <label for="end-date">End Date:</label>
+      <input type="date" id="end-date" name="end-date"><br>
 
-<body>
-  <h1>weight tracker</h1>
+      <label for="days">Days:</label>
+      <input type="number" id="days" name="days" min="1" max="7" value="7"><br>
 
+      <button type="submit" id="submit">Submit</button>
+    </form>
 
+    <table id="result-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Weight</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
 
-</body>
+    <script>
+      const form = document.querySelector('form');
+      const tableBody = document.querySelector('table tbody');
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+        const days = document.getElementById('days').value;
+
+        fetch(`/api/rolling_average?start_date=${startDate}&end_date=${endDate}&days=${days}`)
+          .then(response => response.json())
+          .then(data => {
+            tableBody.innerHTML = '';
+            data.forEach(entry => {
+              const row = document.createElement('tr');
+              const dateCell = document.createElement('td');
+              const weightCell = document.createElement('td');
+
+              dateCell.textContent = entry.date;
+              weightCell.textContent = `${entry.average.toFixed(1)} kg`;
+
+              row.appendChild(dateCell);
+              row.appendChild(weightCell);
+
+              tableBody.appendChild(row);
+            });
+          })
+          .catch(error => {
+            console.error(error);
+          });
+      });
+    </script>
+  </body>
+</html>
