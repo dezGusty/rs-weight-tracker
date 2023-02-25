@@ -34,7 +34,7 @@
         const endDate = document.getElementById('end-date').value;
         const days = document.getElementById('days').value;
 
-        fetch(`/api/rolling_average?start_date=${startDate}&end_date=${endDate}&days=${days}`)
+        fetch(`${window.location.href}/api/rolling_average?start_date=${startDate}&end_date=${endDate}&days=${days}`)
           .then(response => response.json())
           .then(data => {
             const labels = data.map(entry => entry.date);
