@@ -609,3 +609,6 @@ new Chart(chartCanvas, {
 
 Nice things: the rolling average term was propagated all the way to this chart.
 Automatically identified what type of chart to use and what to use for axis data.
+
+The result
+![session-4](./session-4.png)
