@@ -1,12 +1,12 @@
 pub mod models;
 pub mod schema;
 
-use chrono::{NaiveDate, Local};
+use chrono::{NaiveDate};
 use models::{NewWeight, Weight};
 
 use diesel::{prelude::*, SqliteConnection};
 use dotenv::dotenv;
-use std::{env, error::Error, fmt};
+use std::{env, fmt};
 
 pub fn establish_connection() -> SqliteConnection {
     dotenv().ok();
@@ -115,10 +115,6 @@ pub fn upsert_weight_for_date(
 
     let result = upsert_weight(conn, in_weight_value, measurement_date)?;
     Ok(result)
-    // match result {
-    //     Ok(counter) => Ok(counter),
-    //     Err(err) => Err(format!("Failed to upsert weight: {}", err)),
-    // };
 }
 
 pub fn weights_between_dates(
