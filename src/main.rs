@@ -2,7 +2,17 @@
 extern crate rocket;
 
 use chrono::NaiveDate;
-use rocket::serde::json::Json;
+use rocket::fs::{relative, FileServer};
+use rocket::serde::json::{self, Json};
+use serde::Deserialize;
+use serde_json::json;
+use serde_json::Value;
+
+#[derive(Debug, Deserialize)]
+pub struct AddWeightPayload {
+    pub weight_value: f64,
+    pub measurement_date: String,
+}
 
 #[get("/rolling_average?<start_date>&<end_date>&<days>")]
 fn rolling_average(
@@ -37,23 +47,29 @@ fn rolling_average(
     Json(result)
 }
 
-// #[post("/weights", data = "<weight>")]
-// fn add_weight(weight: Json<Weight>) -> Result<Json<Weight>, String> {
-//     let mut conn = rs_weight_tracker::establish_connection();
+#[post("/add_weight", format = "json", data = "<payload>")]
+fn add_weight(payload: Json<AddWeightPayload>) -> Value {
+    let mut conn = rs_weight_tracker::establish_connection();
+    let Json(payload) = payload;
 
-//     match rs_weight_tracker::upsert_weight(&mut conn, weight.weight_value, weight.measurement_date) {
-//         Ok(()) => Ok(weight),
-//         Err(err) => Err(format!("Failed to upsert weight: {}", err))
-//     }.map_err(|err| err.to_string())
-// }
-
-
-use rocket::fs::{relative, FileServer};
-use rs_weight_tracker::models::Weight;
+    // let mut post_response: AddWeightResponse = AddWeightResponse{ rows_affected: 0 };
+    let mut post_response = 0;
+    if let Ok(upsert_result) = rs_weight_tracker::upsert_weight_for_date(
+        &mut conn,
+        payload.weight_value,
+        payload.measurement_date,
+    ) {
+        // post_response.rows_affected = upsert_result;
+        // Flash::success(Redirect::to("/"), "Todo successfully added.")
+        json!({ "status": "ok", "rows": post_response })
+    } else {
+        json!({ "status": "ok", "rows": 0 })
+    }
+}
 
 #[rocket::launch]
 fn rocket() -> _ {
     rocket::build()
         .mount("/", FileServer::from(relative!("static")))
-        .mount("/api", routes![rolling_average])
+        .mount("/api", routes![rolling_average, add_weight])
 }

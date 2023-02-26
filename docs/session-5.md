@@ -286,21 +286,223 @@ pub fn upsert_weight_for_date(
 
 that takes the weight value and a string for the date (E.g. "2023-02-26"), then performs or calls the necessary data parsing and finally forwards the call to `upsert_weight`
 
-<!-- 
+## Output 3
 
-Starting from this refactored endpoint
+Sure, here's the updated lib.rs with the parse_date function and the upsert_weight_for_date function:
 
 ```rust
-#[post("/weights", data = "<weight>")]
-fn add_weight(weight: Json<Weight>) -> Result<Json<Weight>, String> {
-    let mut conn = rs_weight_tracker::establish_connection();
 
-    match rs_weight_tracker::upsert_weight(&mut conn, weight.weight_value, weight.measurement_date) {
-        Ok(()) => Ok(weight),
-        Err(err) => Err(format!("Failed to upsert weight: {}", err))
-    }.map_err(|err| err.to_string())
+// lib.rs
+
+use chrono::{NaiveDate, NaiveDateTime};
+use diesel::{prelude::*, sqlite::SqliteConnection};
+
+pub mod models;
+pub mod schema;
+
+#[derive(Debug, Clone)]
+pub struct LocalParseError {
+    pub message: String,
 }
 
+impl From<std::num::ParseIntError> for LocalParseError {
+    fn from(_: std::num::ParseIntError) -> LocalParseError {
+        LocalParseError {
+            message: "Invalid data type".to_string(),
+        }
+    }
+}
+
+pub fn establish_connection() -> SqliteConnection {
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    SqliteConnection::establish(&database_url)
+        .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
+}
+
+pub fn create_weight<'a>(
+    conn: &mut SqliteConnection,
+    weight_value: f64,
+    measurement_date: NaiveDate,
+) -> usize {
+    use crate::schema::weights;
+
+    let new_weight = models::NewWeight {
+        weight_value,
+        measurement_date,
+    };
+
+    diesel::insert_into(weights::table)
+        .values(&new_weight)
+        .execute(conn)
+        .expect("Error inserting new weight")
+}
+
+pub fn upsert_weight<'a>(
+    conn: &mut SqliteConnection,
+    weight_value: f64,
+    measurement_date: NaiveDate,
+) -> usize {
+    use crate::schema::weights::dsl::*;
+
+    let new_weight = models::NewWeight {
+        weight_value,
+        measurement_date,
+    };
+
+    diesel::replace_into(weights)
+        .values(&new_weight)
+        .execute(conn)
+        .expect("Error upserting new weight")
+}
+
+fn parse_date(date_string: &str) -> Result<NaiveDate, LocalParseError> {
+    let mut parts = date_string.split('-');
+    let year_str = parts.next().ok_or(LocalParseError {
+        message: String::from("year problem"),
+    })?;
+
+    let year = year_str.parse::<i32>()?;
+    let month_str = parts.next().ok_or(LocalParseError {
+        message: String::from("month problem"),
+    })?;
+    let month = month_str.parse::<u32>()?;
+    let day_str = parts.next().ok_or(LocalParseError {
+        message: String::from("day problem"),
+    })?;
+    let day = day_str.parse::<u32>()?;
+    if let Some(result) = NaiveDate::from_ymd_opt(year, month, day) {
+        return Ok(result);
+    }
+
+    Err(LocalParseError{ message: String::from("invalid date")})
+}
+
+pub fn upsert_weight_for_date(
+    conn: &mut SqliteConnection,
+    in_weight_value: f64,
+    in_measurement_date: String,
+) -> Result<(), LocalParseError> {
+    let measurement_date = parse_date(&in_measurement_date)?;
+
+    upsert_weight(conn, in_weight_value, measurement_date);
+
+    Ok(())
+}
 ```
 
- -->
+Note that the upsert_weight_for_date function returns a Result<(), LocalParseError>, which represents either a success or an error. The parse_date function is used to parse the input date string, and any parsing errors are returned as a LocalParseError. The function then calls upsert_weight with the parsed weight value and measurement date.
+
+Here's an example usage:
+
+```rust
+
+let mut conn = establish_connection();
+let weight_value = 75.5;
+let measurement_date = String::from("2023
+```
+
+## Analysis 3
+
+(Long text results get cutoff, we'll have to tell ChatGPT to continue/resume)
+
+Only taking the requested `upsert_weight_for_date` function into account (the rest were regenerated differently and can be ignored)
+
+The function needs some minor adjustments:
+
+```rust
+pub fn upsert_weight_for_date(
+    conn: &mut SqliteConnection,
+    in_weight_value: f64,
+    in_measurement_date: String,
+) -> Result<usize, LocalParseError> {
+    let measurement_date = parse_date(&in_measurement_date)?;
+
+    let result = upsert_weight(conn, in_weight_value, measurement_date)?;
+    Ok(result)
+}
+```
+
+Also, LocalParseError needs to be extended:
+
+```rust
+impl From<diesel::result::Error> for LocalParseError {
+    fn from(err: diesel::result::Error) -> LocalParseError {
+        LocalParseError {
+            message: format!("Some db error {}", err.to_string()),
+        }
+    }
+}
+impl fmt::Display for LocalParseError {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "LPErr {}", self.message)
+    }
+}
+```
+
+## Input 4
+
+Continue
+
+## Output 4
+
+Sure! Let me first provide the implementation for the new upsert_weight_for_date function:
+
+```rust
+
+pub fn upsert_weight_for_date(
+    conn: &mut SqliteConnection,
+    in_weight_value: f64,
+    in_measurement_date: String,
+) -> Result<usize, diesel::result::Error> {
+    let date = parse_date(&in_measurement_date)?;
+    upsert_weight(conn, in_weight_value, date)
+}
+```
+
+Now let's make some changes to the endpoint /api/add_weight. The following implementation is using serde to deserialize the request payload, which is a JSON object containing the weight value and the date as a string.
+
+```rust
+
+#[post("/add_weight", format = "json", data = "<payload>")]
+fn add_weight(payload: Json<AddWeightPayload>, conn: DbConn) -> Result<Json<AddWeightResponse>, DieselError> {
+    let Json(payload) = payload;
+    let response = upsert_weight_for_date(&mut *conn, payload.weight, payload.date)?;
+    Ok(Json(AddWeightResponse{ rows_affected: response }))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AddWeightPayload {
+    pub weight: f64,
+    pub date: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AddWeightResponse {
+    pub rows_affected: usize,
+}
+```
+
+With these changes, you can now send a POST request to /api/add_weight with the following JSON payload:
+
+```json
+
+{
+  "weight": 80.0,
+  "date": "2023-02-26"
+}
+```
+This will add the weight value to the database for the given date. The response will be a JSON object indicating how many rows were affected by the operation.
+
+## Analysis 5
+
+The rewriting of the post is interesting. It does not compile out of the box; I'm not certain how the connection would be passed (I'll have to do some reading at some point to see what Rocket offers in terms of dependency injection)
+
+```rust
+#[post("/add_weight", format = "json", data = "<payload>")]
+fn add_weight(payload: Json<AddWeightPayload>, conn: DbConn) -> Result<Json<AddWeightResponse>, DieselError> {
+    let Json(payload) = payload;
+    let response = rs_weight_tracker::upsert_weight_for_date(&mut *conn, payload.weight, payload.date)?;
+    Ok(Json(AddWeightResponse{ rows_affected: response }))
+}
+```
