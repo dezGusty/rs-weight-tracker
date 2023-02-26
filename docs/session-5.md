@@ -116,3 +116,191 @@ Yes, we can check if a chart already exists before creating a new chart instance
 ```
 
 This should destroy the previous chart instance before creating a new one.
+
+## Analysis 1
+
+Replaced beginAtZero flag and removed the suggestedMax entry.
+Also, due to a custom deployment scenario, added a prefix to the API path.
+Overall, works fine, but is using a different layout compared with the 1st time.
+
+## Input 2
+
+I'm using the content you provided above in an `index.html` file. I want to add another file named `add-weight.html`.
+This file should link to `index.html` and `index.html` should link to it.
+
+The `add-weight.html` should allow users to call an endpoint to add (or update) a weight for a date.
+We already have some functionality we can reuse in the back-end in `lib.rs` in the form of the function
+
+```rust
+pub fn upsert_weight(
+    conn: &mut SqliteConnection,
+    in_weight_value: f64,
+    in_measurement_date: NaiveDate,
+) 
+```
+
+But we also need an endpoint for it.
+
+## Output 2
+
+To add a new page named add-weight.html and link to it from the index.html page, you can create a hyperlink on the index page like this:
+
+```html
+
+<a href="add-weight.html">Add Weight</a>
+```
+
+This creates a hyperlink that points to the new page.
+
+To add the endpoint for adding or updating a weight, you can define a new route in main.rs like this:
+
+```rust
+
+#[post("/weights", data = "<weight>")]
+fn add_weight(weight: Json<Weight>) -> Result<Json<Weight>, String> {
+    let mut conn = establish_connection();
+
+    match upsert_weight(&mut conn, weight.weight_value, weight.measurement_date) {
+        Ok(()) => Ok(weight),
+        Err(err) => Err(format!("Failed to upsert weight: {}", err))
+    }.map_err(|err| err.to_string())
+}
+```
+
+This defines a new POST route at /weights that expects JSON data containing the weight data in the form of a Weight struct.
+
+To call this endpoint from the add-weight.html page, you can use JavaScript to make an HTTP POST request to the endpoint with the weight data as JSON. Here's an example of how you can do that using fetch():
+
+```html
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Add Weight</title>
+  </head>
+  <body>
+    <form>
+      <label for="weight">Weight:</label>
+      <input type="number" id="weight" name="weight"><br>
+
+      <label for="measurement-date">Measurement Date:</label>
+      <input type="date" id="measurement-date" name="measurement-date"><br>
+
+      <button type="submit" id="submit">Submit</button>
+    </form>
+
+    <script>
+      const form = document.querySelector('form');
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+
+        const weight = document.getElementById('weight').value;
+        const measurementDate = document.getElementById('measurement-date').value;
+
+        const data = {
+          weight_value: parseFloat(weight),
+          measurement_date: measurementDate
+        };
+
+        fetch('/weights', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+          console.log(data);
+          alert('Weight added successfully');
+        })
+        .catch(error => {
+          console.error(error);
+          alert('Failed to add weight');
+        });
+      });
+    </script>
+  </body>
+</html>
+```
+
+This creates a POST request to the /weights endpoint with the weight data in the request body as JSON. The response from the server is also expected to be in JSON format.
+
+## Analysis 2
+
+## Input 3
+
+Let's change some things in the endpoint.
+In `lib.rs` I added a `parse_date` function:
+
+```rust
+#[derive(Debug, Clone)]
+pub struct LocalParseError {
+    pub message: String,
+}
+
+impl From<std::num::ParseIntError> for LocalParseError {
+    fn from(_: std::num::ParseIntError) -> LocalParseError {
+        LocalParseError {
+            message: "Invalid data type".to_string(),
+        }
+    }
+}
+
+fn parse_date(date_string: &str) -> Result<NaiveDate, LocalParseError> {
+    let mut parts = date_string.split('-');
+    let year_str = parts.next().ok_or(LocalParseError {
+        message: String::from("year problem"),
+    })?;
+
+    let year = year_str.parse::<i32>()?;
+    let month_str = parts.next().ok_or(LocalParseError {
+        message: String::from("month problem"),
+    })?;
+    let month = month_str.parse::<u32>()?;
+    let day_str = parts.next().ok_or(LocalParseError {
+        message: String::from("day problem"),
+    })?;
+    let day = day_str.parse::<u32>()?;
+    if let Some(result) = NaiveDate::from_ymd_opt(year, month, day) {
+        return Ok(result);
+    }
+
+    Err(LocalParseError{ message: String::from("invalid date")})
+}
+```
+
+Please also add a function `upsert_weight_for_date` in `lib.rs`
+
+E.g.
+
+```rust
+pub fn upsert_weight_for_date(
+    conn: &mut SqliteConnection,
+    in_weight_value: f64,
+    in_measurement_date: String,
+)
+```
+
+that takes the weight value and a string for the date (E.g. "2023-02-26"), then performs or calls the necessary data parsing and finally forwards the call to `upsert_weight`
+
+<!-- 
+
+Starting from this refactored endpoint
+
+```rust
+#[post("/weights", data = "<weight>")]
+fn add_weight(weight: Json<Weight>) -> Result<Json<Weight>, String> {
+    let mut conn = rs_weight_tracker::establish_connection();
+
+    match rs_weight_tracker::upsert_weight(&mut conn, weight.weight_value, weight.measurement_date) {
+        Ok(()) => Ok(weight),
+        Err(err) => Err(format!("Failed to upsert weight: {}", err))
+    }.map_err(|err| err.to_string())
+}
+
+```
+
+ -->

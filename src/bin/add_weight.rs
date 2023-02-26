@@ -1,4 +1,3 @@
-use chrono::{Datelike, NaiveDate, NaiveDateTime};
 use std::{env, error::Error};
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -10,24 +9,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let weight = args[1].parse::<f64>()?;
-    let timestamp = args[2].parse::<i64>()?;
-    let measurement_datetime =
-        NaiveDateTime::from_timestamp_opt(timestamp, 0).ok_or("Invalid timestamp")?;
 
-    if let Some(measurement_date) = NaiveDate::from_ymd_opt(
-        measurement_datetime.year(),
-        measurement_datetime.month(),
-        measurement_datetime.day(),
-    ) {
-        let mut conn = rs_weight_tracker::establish_connection();
+    let date_as_text = args[2].clone();
+    let mut conn = rs_weight_tracker::establish_connection();
 
-        let count = rs_weight_tracker::add_weight(&mut conn, weight, measurement_date)?;
-
-        println!("Added {} new weight(s)", count);
-
-        Ok(())
-    } else {
-        eprintln!("Failed to obtain date from date time");
-        return Ok(());
-    }
+    let count = rs_weight_tracker::upsert_weight_for_date(&mut conn, weight, date_as_text)
+        .map_err(|err| err.to_string())?;
+    println!("Added {} new weight(s)", count);
+    Ok(())
 }

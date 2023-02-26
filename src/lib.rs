@@ -1,12 +1,12 @@
 pub mod models;
 pub mod schema;
 
-use chrono::NaiveDate;
+use chrono::{NaiveDate, Local};
 use models::{NewWeight, Weight};
 
 use diesel::{prelude::*, SqliteConnection};
 use dotenv::dotenv;
-use std::env;
+use std::{env, error::Error, fmt};
 
 pub fn establish_connection() -> SqliteConnection {
     dotenv().ok();
@@ -31,6 +31,61 @@ pub fn add_weight(
         .execute(conn)
 }
 
+#[derive(Debug, Clone)]
+pub struct LocalParseError {
+    pub message: String,
+}
+
+impl fmt::Display for LocalParseError {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // format!("LPE: {}", self.message)
+        write!(f, "LPErr")
+        
+        // fmt::Display::fmt(&**self, f)
+    }
+}
+
+impl From<std::num::ParseIntError> for LocalParseError {
+    fn from(_: std::num::ParseIntError) -> LocalParseError {
+        LocalParseError {
+            message: "Invalid data type".to_string(),
+        }
+    }
+}
+
+impl From<diesel::result::Error> for LocalParseError {
+    fn from(err: diesel::result::Error) -> LocalParseError {
+        LocalParseError {
+            message: format!("Some db error {}", err.to_string()),
+        }
+    }
+}
+
+fn parse_date(date_string: &str) -> Result<NaiveDate, LocalParseError> {
+    let mut parts = date_string.split('-');
+    let year_str = parts.next().ok_or(LocalParseError {
+        message: String::from("year problem"),
+    })?;
+
+    let year = year_str.parse::<i32>()?;
+    let month_str = parts.next().ok_or(LocalParseError {
+        message: String::from("month problem"),
+    })?;
+    let month = month_str.parse::<u32>()?;
+    let day_str = parts.next().ok_or(LocalParseError {
+        message: String::from("day problem"),
+    })?;
+    let day = day_str.parse::<u32>()?;
+    if let Some(result) = NaiveDate::from_ymd_opt(year, month, day) {
+        return Ok(result);
+    }
+
+    Err(LocalParseError {
+        message: String::from("invalid date"),
+    })
+}
+
 pub fn upsert_weight(
     conn: &mut SqliteConnection,
     in_weight_value: f64,
@@ -52,6 +107,21 @@ pub fn upsert_weight(
     } else {
         add_weight(conn, in_weight_value, in_measurement_date)
     }
+}
+
+pub fn upsert_weight_for_date(
+    conn: &mut SqliteConnection,
+    in_weight_value: f64,
+    in_measurement_date: String,
+) -> Result<usize, LocalParseError> {
+    let measurement_date = parse_date(&in_measurement_date)?;
+
+    let result = upsert_weight(conn, in_weight_value, measurement_date)?;
+    Ok(result)
+    // match result {
+    //     Ok(counter) => Ok(counter),
+    //     Err(err) => Err(format!("Failed to upsert weight: {}", err)),
+    // };
 }
 
 pub fn weights_between_dates(
@@ -80,9 +150,10 @@ pub fn weights_between_dates_with_interpolation_vec(
     for weight in actual_weights {
         while current_date < weight.measurement_date {
             let interpolated_weight = current_weight.map(|weight_value| {
-                let weight_ratio =
-                    (current_date - start_date).num_days() as f64 / (weight.measurement_date - start_date).num_days() as f64;
-                let interpolated_weight_value = weight_value + weight_ratio * (weight.weight_value - weight_value);
+                let weight_ratio = (current_date - start_date).num_days() as f64
+                    / (weight.measurement_date - start_date).num_days() as f64;
+                let interpolated_weight_value =
+                    weight_value + weight_ratio * (weight.weight_value - weight_value);
                 Weight {
                     id: 0,
                     weight_value: interpolated_weight_value,
@@ -99,12 +170,10 @@ pub fn weights_between_dates_with_interpolation_vec(
         interpolated_weights.push(weight);
     }
     while current_date <= end_date {
-        let interpolated_weight = current_weight.map(|weight_value| {
-            Weight {
-                id: 0,
-                weight_value,
-                measurement_date: current_date,
-            }
+        let interpolated_weight = current_weight.map(|weight_value| Weight {
+            id: 0,
+            weight_value,
+            measurement_date: current_date,
         });
         if let Some(interpolated_weight) = interpolated_weight {
             interpolated_weights.push(interpolated_weight);
@@ -120,7 +189,6 @@ pub fn weights_between_dates_with_interpolation(
     start_date: NaiveDate,
     end_date: NaiveDate,
 ) -> QueryResult<Vec<(Weight, bool)>> {
-
     let weights = weights_between_dates(conn, start_date, end_date)?;
 
     let mut interpolated_weights = Vec::new();
@@ -129,9 +197,10 @@ pub fn weights_between_dates_with_interpolation(
     for weight in weights {
         while current_date < weight.measurement_date {
             let interpolated_weight = current_weight.map(|weight_value| {
-                let weight_ratio =
-                    (current_date - start_date).num_days() as f64 / (weight.measurement_date - start_date).num_days() as f64;
-                let interpolated_weight_value = weight_value + weight_ratio * (weight.weight_value - weight_value);
+                let weight_ratio = (current_date - start_date).num_days() as f64
+                    / (weight.measurement_date - start_date).num_days() as f64;
+                let interpolated_weight_value =
+                    weight_value + weight_ratio * (weight.weight_value - weight_value);
                 let interpolated_weight = Weight {
                     weight_value: interpolated_weight_value,
                     measurement_date: current_date,
@@ -197,10 +266,7 @@ pub fn rolling_average_between_dates(
 
         if days >= amount_of_days - 1 {
             let average = rolling_sum / rolling_window.len() as f64;
-            results.push((
-                weight.measurement_date,
-                average,
-            ));
+            results.push((weight.measurement_date, average));
         }
     }
 

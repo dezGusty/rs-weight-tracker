@@ -37,7 +37,19 @@ fn rolling_average(
     Json(result)
 }
 
+// #[post("/weights", data = "<weight>")]
+// fn add_weight(weight: Json<Weight>) -> Result<Json<Weight>, String> {
+//     let mut conn = rs_weight_tracker::establish_connection();
+
+//     match rs_weight_tracker::upsert_weight(&mut conn, weight.weight_value, weight.measurement_date) {
+//         Ok(()) => Ok(weight),
+//         Err(err) => Err(format!("Failed to upsert weight: {}", err))
+//     }.map_err(|err| err.to_string())
+// }
+
+
 use rocket::fs::{relative, FileServer};
+use rs_weight_tracker::models::Weight;
 
 #[rocket::launch]
 fn rocket() -> _ {
