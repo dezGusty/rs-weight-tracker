@@ -1,7 +1,7 @@
 pub mod models;
 pub mod schema;
 
-use chrono::{NaiveDate};
+use chrono::NaiveDate;
 use models::{NewWeight, Weight};
 
 use diesel::{prelude::*, SqliteConnection};
@@ -141,37 +141,40 @@ pub fn weights_between_dates_with_interpolation_vec(
     let mut current_weight = None;
     let mut current_date = start_date;
     for weight in actual_weights {
-        while current_date < weight.measurement_date {
+        while let Some(d) = current_date.succ_opt() {
+            if d >= weight.measurement_date {
+                break;
+            }
             let interpolated_weight = current_weight.map(|weight_value| {
-                let weight_ratio = (current_date - start_date).num_days() as f64
+                let weight_ratio = (d - start_date).num_days() as f64
                     / (weight.measurement_date - start_date).num_days() as f64;
                 let interpolated_weight_value =
                     weight_value + weight_ratio * (weight.weight_value - weight_value);
                 Weight {
                     id: 0,
                     weight_value: interpolated_weight_value,
-                    measurement_date: current_date,
+                    measurement_date: d,
                 }
             });
             if let Some(interpolated_weight) = interpolated_weight {
                 interpolated_weights.push(interpolated_weight);
             }
-            current_date = current_date.succ();
+            current_date = d;
         }
         current_weight = Some(weight.weight_value);
-        current_date = weight.measurement_date.succ();
+        current_date = weight.measurement_date;
         interpolated_weights.push(weight);
     }
-    while current_date <= end_date {
+    while let Some(d) = current_date.succ_opt() {
         let interpolated_weight = current_weight.map(|weight_value| Weight {
             id: 0,
             weight_value,
-            measurement_date: current_date,
+            measurement_date: d,
         });
         if let Some(interpolated_weight) = interpolated_weight {
             interpolated_weights.push(interpolated_weight);
         }
-        current_date = current_date.succ();
+        current_date = d;
     }
 
     Ok(interpolated_weights)
@@ -204,10 +207,10 @@ pub fn weights_between_dates_with_interpolation(
             if let Some((interpolated_weight, is_interpolated)) = interpolated_weight {
                 interpolated_weights.push((interpolated_weight, is_interpolated));
             }
-            current_date = current_date.succ();
+            current_date = current_date.succ_opt().unwrap_or(current_date);
         }
         current_weight = Some(weight.weight_value);
-        current_date = weight.measurement_date.succ();
+        current_date = weight.measurement_date.succ_opt().unwrap_or(current_date);
         interpolated_weights.push((weight, false));
     }
     while current_date <= end_date {
@@ -222,7 +225,7 @@ pub fn weights_between_dates_with_interpolation(
         if let Some((interpolated_weight, is_interpolated)) = interpolated_weight {
             interpolated_weights.push((interpolated_weight, is_interpolated));
         }
-        current_date = current_date.succ();
+        current_date = current_date.succ_opt().unwrap_or(current_date);
     }
 
     Ok(interpolated_weights)

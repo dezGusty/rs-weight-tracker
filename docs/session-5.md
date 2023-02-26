@@ -492,6 +492,7 @@ With these changes, you can now send a POST request to /api/add_weight with the 
   "date": "2023-02-26"
 }
 ```
+
 This will add the weight value to the database for the given date. The response will be a JSON object indicating how many rows were affected by the operation.
 
 ## Analysis 5
@@ -658,3 +659,121 @@ pub fn weights_between_dates_with_interpolation_vec(
 ```
 
 The main change is that the while loop now uses while let Some(d) = current_date.succ_opt() instead of while current_date < weight.measurement_date. Similarly, the current_date variable is updated using current_date = d instead of current_date = current_date.succ().
+
+## Input 8
+
+Can you do the same for this function? (replace `succ()` with `succ_opt()`)
+
+```rust
+pub fn weights_between_dates_with_interpolation(
+    conn: &mut SqliteConnection,
+    start_date: NaiveDate,
+    end_date: NaiveDate,
+) -> QueryResult<Vec<(Weight, bool)>> {
+    let weights = weights_between_dates(conn, start_date, end_date)?;
+
+    let mut interpolated_weights = Vec::new();
+    let mut current_weight = None;
+    let mut current_date = start_date;
+    for weight in weights {
+        while current_date < weight.measurement_date {
+            let interpolated_weight = current_weight.map(|weight_value| {
+                let weight_ratio = (current_date - start_date).num_days() as f64
+                    / (weight.measurement_date - start_date).num_days() as f64;
+                let interpolated_weight_value =
+                    weight_value + weight_ratio * (weight.weight_value - weight_value);
+                let interpolated_weight = Weight {
+                    weight_value: interpolated_weight_value,
+                    measurement_date: current_date,
+                    id: 0,
+                };
+                (interpolated_weight, true)
+            });
+            if let Some((interpolated_weight, is_interpolated)) = interpolated_weight {
+                interpolated_weights.push((interpolated_weight, is_interpolated));
+            }
+            current_date = current_date.succ();
+        }
+        current_weight = Some(weight.weight_value);
+        current_date = weight.measurement_date.succ();
+        interpolated_weights.push((weight, false));
+    }
+    while current_date <= end_date {
+        let interpolated_weight = current_weight.map(|weight_value| {
+            let interpolated_weight = Weight {
+                weight_value,
+                measurement_date: current_date,
+                id: 0,
+            };
+            (interpolated_weight, true)
+        });
+        if let Some((interpolated_weight, is_interpolated)) = interpolated_weight {
+            interpolated_weights.push((interpolated_weight, is_interpolated));
+        }
+        current_date = current_date.succ();
+    }
+
+    Ok(interpolated_weights)
+}
+
+```
+
+## Output 8
+
+Sure! Here's the updated implementation of the weights_between_dates_with_interpolation function using succ_opt():
+
+```rust
+
+pub fn weights_between_dates_with_interpolation(
+    conn: &mut SqliteConnection,
+    start_date: NaiveDate,
+    end_date: NaiveDate,
+) -> QueryResult<Vec<(Weight, bool)>> {
+    let weights = weights_between_dates(conn, start_date, end_date)?;
+
+    let mut interpolated_weights = Vec::new();
+    let mut current_weight = None;
+    let mut current_date = start_date;
+    for weight in weights {
+        while current_date < weight.measurement_date {
+            let interpolated_weight = current_weight.map(|weight_value| {
+                let weight_ratio = (current_date - start_date).num_days() as f64
+                    / (weight.measurement_date - start_date).num_days() as f64;
+                let interpolated_weight_value =
+                    weight_value + weight_ratio * (weight.weight_value - weight_value);
+                let interpolated_weight = Weight {
+                    weight_value: interpolated_weight_value,
+                    measurement_date: current_date,
+                    id: 0,
+                };
+                (interpolated_weight, true)
+            });
+            if let Some((interpolated_weight, is_interpolated)) = interpolated_weight {
+                interpolated_weights.push((interpolated_weight, is_interpolated));
+            }
+            current_date = current_date.succ_opt().unwrap_or(current_date);
+        }
+        current_weight = Some(weight.weight_value);
+        current_date = weight.measurement_date.succ_opt().unwrap_or(current_date);
+        interpolated_weights.push((weight, false));
+    }
+    while current_date <= end_date {
+        let interpolated_weight = current_weight.map(|weight_value| {
+            let interpolated_weight = Weight {
+                weight_value,
+                measurement_date: current_date,
+                id: 0,
+            };
+            (interpolated_weight, true)
+        });
+        if let Some((interpolated_weight, is_interpolated)) = interpolated_weight {
+            interpolated_weights.push((interpolated_weight, is_interpolated));
+        }
+        current_date = current_date.succ_opt().unwrap_or(current_date);
+    }
+
+    Ok(interpolated_weights)
+}
+```
+
+Note that I replaced all occurrences of succ() with succ_opt() and used unwrap_or(current_date) to handle the None values returned by succ_opt().
