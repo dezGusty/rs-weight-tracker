@@ -130,56 +130,6 @@ pub fn weights_between_dates(
         .load::<Weight>(conn)
 }
 
-pub fn weights_between_dates_with_interpolation_vec(
-    conn: &mut SqliteConnection,
-    start_date: NaiveDate,
-    end_date: NaiveDate,
-) -> QueryResult<Vec<Weight>> {
-    let actual_weights = weights_between_dates(conn, start_date, end_date)?;
-
-    let mut interpolated_weights = Vec::new();
-    let mut current_weight = None;
-    let mut current_date = start_date;
-    for weight in actual_weights {
-        while let Some(d) = current_date.succ_opt() {
-            if d >= weight.measurement_date {
-                break;
-            }
-            let interpolated_weight = current_weight.map(|weight_value| {
-                let weight_ratio = (d - start_date).num_days() as f64
-                    / (weight.measurement_date - start_date).num_days() as f64;
-                let interpolated_weight_value =
-                    weight_value + weight_ratio * (weight.weight_value - weight_value);
-                Weight {
-                    id: 0,
-                    weight_value: interpolated_weight_value,
-                    measurement_date: d,
-                }
-            });
-            if let Some(interpolated_weight) = interpolated_weight {
-                interpolated_weights.push(interpolated_weight);
-            }
-            current_date = d;
-        }
-        current_weight = Some(weight.weight_value);
-        current_date = weight.measurement_date;
-        interpolated_weights.push(weight);
-    }
-    while let Some(d) = current_date.succ_opt() {
-        let interpolated_weight = current_weight.map(|weight_value| Weight {
-            id: 0,
-            weight_value,
-            measurement_date: d,
-        });
-        if let Some(interpolated_weight) = interpolated_weight {
-            interpolated_weights.push(interpolated_weight);
-        }
-        current_date = d;
-    }
-
-    Ok(interpolated_weights)
-}
-
 pub fn weights_between_dates_with_interpolation(
     conn: &mut SqliteConnection,
     start_date: NaiveDate,
