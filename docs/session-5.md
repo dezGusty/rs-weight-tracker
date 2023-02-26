@@ -506,3 +506,155 @@ fn add_weight(payload: Json<AddWeightPayload>, conn: DbConn) -> Result<Json<AddW
     Ok(Json(AddWeightResponse{ rows_affected: response }))
 }
 ```
+
+## Input 6
+
+Just so that you know, I used part of your proposal. In `main.rs` I modified the endpoint function like this
+
+```rust
+#[post("/add_weight", format = "json", data = "<payload>")]
+fn add_weight(payload: Json<AddWeightPayload>) -> Value {
+    let mut conn = rs_weight_tracker::establish_connection();
+    let Json(payload) = payload;
+
+    if let Ok(changed_entries_count) = rs_weight_tracker::upsert_weight_for_date(
+        &mut conn,
+        payload.weight_value,
+        payload.measurement_date,
+    ) {
+        json!({ "status": "ok", "rows": changed_entries_count })
+    } else {
+        json!({ "status": "ok", "rows": 0 })
+    }
+}
+```
+
+And of course, the `main` function is also changed:
+
+```rust
+#[rocket::launch]
+fn rocket() -> _ {
+    rocket::build()
+        .mount("/", FileServer::from(relative!("static")))
+        .mount("/api", routes![rolling_average, add_weight])
+}
+```
+
+## Output 6
+
+Great! That's a good solution. Is there anything else you'd like me to help you with?
+
+## Input 7
+
+I'd like to improve my code a bit. In `lib.rs` there is this function
+
+```rust
+pub fn weights_between_dates_with_interpolation_vec(
+    conn: &mut SqliteConnection,
+    start_date: NaiveDate,
+    end_date: NaiveDate,
+) -> QueryResult<Vec<Weight>> {
+    let actual_weights = weights_between_dates(conn, start_date, end_date)?;
+
+    let mut interpolated_weights = Vec::new();
+    let mut current_weight = None;
+    let mut current_date = start_date;
+    for weight in actual_weights {
+        while current_date < weight.measurement_date {
+            let interpolated_weight = current_weight.map(|weight_value| {
+                let weight_ratio = (current_date - start_date).num_days() as f64
+                    / (weight.measurement_date - start_date).num_days() as f64;
+                let interpolated_weight_value =
+                    weight_value + weight_ratio * (weight.weight_value - weight_value);
+                Weight {
+                    id: 0,
+                    weight_value: interpolated_weight_value,
+                    measurement_date: current_date,
+                }
+            });
+            if let Some(interpolated_weight) = interpolated_weight {
+                interpolated_weights.push(interpolated_weight);
+            }
+            current_date = current_date.succ();
+        }
+        current_weight = Some(weight.weight_value);
+        current_date = weight.measurement_date.succ();
+        interpolated_weights.push(weight);
+    }
+    while current_date <= end_date {
+        let interpolated_weight = current_weight.map(|weight_value| Weight {
+            id: 0,
+            weight_value,
+            measurement_date: current_date,
+        });
+        if let Some(interpolated_weight) = interpolated_weight {
+            interpolated_weights.push(interpolated_weight);
+        }
+        current_date = current_date.succ();
+    }
+
+    Ok(interpolated_weights)
+}
+```
+
+Instead of the `succ()` function, I'd like to use `such_opt()` (which returns a Rust `Option`).
+How would the code change?
+
+## Output 7
+
+Here's the modified version of the weights_between_dates_with_interpolation_vec function that uses succ_opt() instead of succ():
+
+```rust
+
+pub fn weights_between_dates_with_interpolation_vec(
+    conn: &mut SqliteConnection,
+    start_date: NaiveDate,
+    end_date: NaiveDate,
+) -> QueryResult<Vec<Weight>> {
+    let actual_weights = weights_between_dates(conn, start_date, end_date)?;
+
+    let mut interpolated_weights = Vec::new();
+    let mut current_weight = None;
+    let mut current_date = start_date;
+    for weight in actual_weights {
+        while let Some(d) = current_date.succ_opt() {
+            if d >= weight.measurement_date {
+                break;
+            }
+            let interpolated_weight = current_weight.map(|weight_value| {
+                let weight_ratio = (d - start_date).num_days() as f64
+                    / (weight.measurement_date - start_date).num_days() as f64;
+                let interpolated_weight_value =
+                    weight_value + weight_ratio * (weight.weight_value - weight_value);
+                Weight {
+                    id: 0,
+                    weight_value: interpolated_weight_value,
+                    measurement_date: d,
+                }
+            });
+            if let Some(interpolated_weight) = interpolated_weight {
+                interpolated_weights.push(interpolated_weight);
+            }
+            current_date = d;
+        }
+        current_weight = Some(weight.weight_value);
+        current_date = weight.measurement_date;
+        interpolated_weights.push(weight);
+    }
+    while let Some(d) = current_date.succ_opt() {
+        let interpolated_weight = current_weight.map(|weight_value| Weight {
+            id: 0,
+            weight_value,
+            measurement_date: d,
+        });
+        if let Some(interpolated_weight) = interpolated_weight {
+            interpolated_weights.push(interpolated_weight);
+        }
+        current_date = d;
+    }
+
+    Ok(interpolated_weights)
+}
+```
+
+The main change is that the while loop now uses while let Some(d) = current_date.succ_opt() instead of while current_date < weight.measurement_date. Similarly, the current_date variable is updated using current_date = d instead of current_date = current_date.succ().

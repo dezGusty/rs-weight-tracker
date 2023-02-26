@@ -17,6 +17,9 @@
     </form>
 
     <script>
+      // when deploying on a server, the api path could be https://server.com/app-1-path/api
+      // and we'd call it from https://server.com/app-1-path/ or https://server.com/app-1-path/index.html
+      // or https://server.com/app-1-path/subpage/page1.html
       const form = document.querySelector('form');
       let subpaths = window.location.pathname.split('/');
       let subpath = '';

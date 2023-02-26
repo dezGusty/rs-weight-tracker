@@ -1,5 +1,4 @@
 use chrono::{Datelike, NaiveDate, NaiveDateTime};
-use rs_weight_tracker::schema::weights::measurement_date;
 use serde::Deserialize;
 use std::{env, error::Error, fs::File};
 
@@ -30,16 +29,17 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut total_count = 0;
     for json_weight in data.weights {
-        let measurement_datetime: NaiveDateTime =
-            NaiveDateTime::from_timestamp(json_weight.date / 1000, 0);
-
+        let measurement_datetime = NaiveDateTime::from_timestamp_opt(json_weight.date / 1000, 0).ok_or("what timestamp is this?")?;
         if let Some(date_of_measurement) = NaiveDate::from_ymd_opt(
             measurement_datetime.year(),
             measurement_datetime.month(),
             measurement_datetime.day(),
         ) {
-            let count =
-                rs_weight_tracker::upsert_weight(&mut conn, json_weight.weight, date_of_measurement)?;
+            let count = rs_weight_tracker::upsert_weight(
+                &mut conn,
+                json_weight.weight,
+                date_of_measurement,
+            )?;
             total_count += count;
             println!("Added {} new weight(s)", count);
         } else {
