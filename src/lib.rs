@@ -39,10 +39,7 @@ pub struct LocalParseError {
 impl fmt::Display for LocalParseError {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // format!("LPE: {}", self.message)
-        write!(f, "LPErr")
-        
-        // fmt::Display::fmt(&**self, f)
+        write!(f, "LPErr {}", self.message)
     }
 }
 
@@ -251,7 +248,7 @@ pub fn rolling_average_between_dates(
     let mut rolling_sum = 0.0;
     let mut results = Vec::new();
 
-    for (weight, is_interpolated) in &weights {
+    for (weight, _) in &weights {
         let value = weight.weight_value;
         rolling_sum += value;
 

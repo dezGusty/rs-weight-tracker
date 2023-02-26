@@ -42,7 +42,7 @@ impl Weight {
             .first::<Weight>(conn)
             .optional()?;
 
-        if let Some(existing_weight) = existing_weight {
+        if let Some(_) = existing_weight {
             update(weights)
                 .set(weight_value.eq(self.weight_value))
                 .execute(conn)
