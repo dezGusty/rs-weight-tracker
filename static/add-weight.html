@@ -19,6 +19,16 @@
     <script>
       const form = document.querySelector('form');
       console.debug('window.location', window.location);
+      let subpaths = window.location.pathname.split('/');
+      let subpath = '';
+      if (subpaths && subpath.length > 0) {
+        subpath = subpath + subpaths[0];
+        if (subpaths[0] == '' && subpath.length > 1) {
+          subpath = subpath + '/' + subpaths[1];
+        }
+      }
+
+      let baseUrl = window.location.origin + subpath;
 
       form.addEventListener('submit', (event) => {
         event.preventDefault();
@@ -31,7 +41,7 @@
           measurement_date: measurementDate
         };
 
-        fetch(`${window.location.origin}/api/add_weight`, {
+        fetch(`${baseUrl}/api/add_weight`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
