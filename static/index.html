@@ -1,102 +1,117 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="UTF-8">
-    <title>Rolling Average</title>
-  </head>
-  <body>
-    <a href="add-weight.html">Add Weight</a>
 
-    <form>
-      <label for="start-date">Start Date:</label>
-      <input type="date" id="start-date" name="start-date"><br>
+<head>
+  <meta charset="UTF-8">
+  <title>Rolling Average</title>
+</head>
 
-      <label for="end-date">End Date:</label>
-      <input type="date" id="end-date" name="end-date"><br>
+<body>
+  <a href="add-weight.html">Add Weight</a>
 
-      <label for="days">Days:</label>
-      <input type="number" id="days" name="days" min="1" max="7" value="7"><br>
+  <form>
+    <label for="start-date">Start Date:</label>
+    <input type="date" id="start-date" name="start-date"><br>
 
-      <button type="submit" id="submit">Submit</button>
-    </form>
+    <label for="end-date">End Date:</label>
+    <input type="date" id="end-date" name="end-date"><br>
 
-    <div>
-      <canvas id="chart"></canvas>
-    </div>
+    <label for="days">Days:</label>
+    <input type="number" id="days" name="days" min="1" max="7" value="7"><br>
 
-    <table id="result-table">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Weight</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <button type="submit" id="submit">Submit</button>
+  </form>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-      const form = document.querySelector('form');
-      const tableBody = document.querySelector('table tbody');
-      let chart;
+  <div>
+    <canvas id="chart"></canvas>
+  </div>
 
-      form.addEventListener('submit', (event) => {
-        event.preventDefault();
+  <table id="result-table">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Weight</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
-        const startDate = document.getElementById('start-date').value;
-        const endDate = document.getElementById('end-date').value;
-        const days = document.getElementById('days').value;
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
 
-        fetch(`${window.location.href}/api/rolling_average?start_date=${startDate}&end_date=${endDate}&days=${days}`)
-          .then(response => response.json())
-          .then(data => {
-            tableBody.innerHTML = '';
-            data.forEach(entry => {
-              const row = document.createElement('tr');
-              const dateCell = document.createElement('td');
-              const weightCell = document.createElement('td');
+    let subpaths = window.location.pathname.split('/');
+    let subpath = '';
+    if (subpaths && subpaths.length > 0) {
+      subpath = subpath + subpaths[0];
+      if (subpaths[0] == '' && subpaths.length > 1) {
+        subpath = subpath + '/' + subpaths[1];
+      }
+    }
 
-              dateCell.textContent = entry.date;
-              weightCell.textContent = `${entry.average.toFixed(1)} kg`;
+    let baseUrl = window.location.origin + subpath;
 
-              row.appendChild(dateCell);
-              row.appendChild(weightCell);
+    const form = document.querySelector('form');
+    const tableBody = document.querySelector('table tbody');
+    let chart;
 
-              tableBody.appendChild(row);
-            });
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
 
-            if (chart) {
-              chart.destroy();
-            }
+      const startDate = document.getElementById('start-date').value;
+      const endDate = document.getElementById('end-date').value;
+      const days = document.getElementById('days').value;
 
-            const chartCanvas = document.getElementById('chart');
-            chart = new Chart(chartCanvas, {
-              type: 'line',
-              data: {
-                labels: data.map(entry => entry.date),
-                datasets: [
-                  {
-                    label: 'Rolling Average',
-                    data: data.map(entry => entry.average.toFixed(1)),
-                    fill: false,
-                    borderColor: 'rgb(75, 192, 192)',
-                    tension: 0.1,
-                  },
-                ],
-              },
-              options: {
-                scales: {
-                  y: {
-                    beginAtZero: false,
-                  },
+      fetch(`${baseUrl}/api/rolling_average?start_date=${startDate}&end_date=${endDate}&days=${days}`)
+        .then(response => response.json())
+        .then(data => {
+          tableBody.innerHTML = '';
+          data.forEach(entry => {
+            const row = document.createElement('tr');
+            const dateCell = document.createElement('td');
+            const weightCell = document.createElement('td');
+
+            dateCell.textContent = entry.date;
+            weightCell.textContent = `${entry.average.toFixed(1)} kg`;
+
+            row.appendChild(dateCell);
+            row.appendChild(weightCell);
+
+            tableBody.appendChild(row);
+          });
+
+          if (chart) {
+            chart.destroy();
+          }
+
+          const chartCanvas = document.getElementById('chart');
+          chart = new Chart(chartCanvas, {
+            type: 'line',
+            data: {
+              labels: data.map(entry => entry.date),
+              datasets: [
+                {
+                  label: 'Rolling Average',
+                  data: data.map(entry => entry.average.toFixed(1)),
+                  fill: false,
+                  borderColor: 'rgb(75, 192, 192)',
+                  tension: 0.1,
+                },
+              ],
+            },
+            options: {
+              scales: {
+                y: {
+                  beginAtZero: false,
                 },
               },
-            });
-          })
-          .catch(error => {
-            console.error(error);
+            },
           });
-      });
-    </script>
-  </body>
+        })
+        .catch(error => {
+          console.error(error);
+        });
+    });
+  </script>
+</body>
+
 </html>
