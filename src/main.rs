@@ -3,7 +3,7 @@ extern crate rocket;
 
 use chrono::NaiveDate;
 use rocket::fs::{relative, FileServer};
-use rocket::serde::json::{self, Json};
+use rocket::serde::json::Json;
 use serde::Deserialize;
 use serde_json::json;
 use serde_json::Value;
@@ -52,16 +52,12 @@ fn add_weight(payload: Json<AddWeightPayload>) -> Value {
     let mut conn = rs_weight_tracker::establish_connection();
     let Json(payload) = payload;
 
-    // let mut post_response: AddWeightResponse = AddWeightResponse{ rows_affected: 0 };
-    let mut post_response = 0;
-    if let Ok(upsert_result) = rs_weight_tracker::upsert_weight_for_date(
+    if let Ok(changed_entries_count) = rs_weight_tracker::upsert_weight_for_date(
         &mut conn,
         payload.weight_value,
         payload.measurement_date,
     ) {
-        // post_response.rows_affected = upsert_result;
-        // Flash::success(Redirect::to("/"), "Todo successfully added.")
-        json!({ "status": "ok", "rows": post_response })
+        json!({ "status": "ok", "rows": changed_entries_count })
     } else {
         json!({ "status": "ok", "rows": 0 })
     }
