@@ -21,9 +21,9 @@
       console.debug('window.location', window.location);
       let subpaths = window.location.pathname.split('/');
       let subpath = '';
-      if (subpaths && subpath.length > 0) {
+      if (subpaths && subpaths.length > 0) {
         subpath = subpath + subpaths[0];
-        if (subpaths[0] == '' && subpath.length > 1) {
+        if (subpaths[0] == '' && subpaths.length > 1) {
           subpath = subpath + '/' + subpaths[1];
         }
       }
