@@ -1,55 +1,59 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="UTF-8">
-    <title>Add Weight</title>
-  </head>
-  <body>
-    <a href="index.html">Main</a>
-    <form>
-      <label for="weight">Weight:</label>
-      <input type="number" id="weight" name="weight"><br>
 
-      <label for="measurement-date">Measurement Date:</label>
-      <input type="date" id="measurement-date" name="measurement-date"><br>
+<head>
+  <meta charset="UTF-8">
+  <title>Add Weight</title>
+</head>
 
-      <button type="submit" id="submit">Submit</button>
-    </form>
+<body>
+  <a href="index.html">Main</a>
+  <form>
+    <label for="weight">Weight:</label>
+    <input type="number" id="weight" name="weight"><br>
 
-    <script>
-      // when deploying on a server, the api path could be https://server.com/app-1-path/api
-      // and we'd call it from https://server.com/app-1-path/ or https://server.com/app-1-path/index.html
-      // or https://server.com/app-1-path/subpage/page1.html
-      const form = document.querySelector('form');
-      let subpaths = window.location.pathname.split('/');
-      let subpath = '';
-      if (subpaths && subpaths.length > 0) {
-        subpath = subpath + subpaths[0];
-        if (subpaths[0] == '' && subpaths.length > 1) {
+    <label for="measurement-date">Measurement Date:</label>
+    <input type="date" id="measurement-date" name="measurement-date"><br>
+
+    <button type="submit" id="submit">Submit</button>
+  </form>
+
+  <script>
+    // when deploying on a server, the api path could be https://server.com/app-1-path/api
+    // and we'd call it from https://server.com/app-1-path/ or https://server.com/app-1-path/index.html
+    // or https://server.com/app-1-path/subpage/page1.html
+    const form = document.querySelector('form');
+    let subpaths = window.location.pathname.split('/');
+    let subpath = '';
+    if (subpaths && subpaths.length > 0) {
+      subpath = subpath + subpaths[0];
+      if (subpaths[0] == '' && subpaths.length > 1) {
+        if (!subpaths[1].endsWith('.html')) {
           subpath = subpath + '/' + subpaths[1];
         }
       }
+    }
 
-      let baseUrl = window.location.origin + subpath;
+    let baseUrl = window.location.origin + subpath;
 
-      form.addEventListener('submit', (event) => {
-        event.preventDefault();
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
 
-        const weight = document.getElementById('weight').value;
-        const measurementDate = document.getElementById('measurement-date').value;
+      const weight = document.getElementById('weight').value;
+      const measurementDate = document.getElementById('measurement-date').value;
 
-        const data = {
-          weight_value: parseFloat(weight),
-          measurement_date: measurementDate
-        };
+      const data = {
+        weight_value: parseFloat(weight),
+        measurement_date: measurementDate
+      };
 
-        fetch(`${baseUrl}/api/add_weight`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(data)
-        })
+      fetch(`${baseUrl}/api/add_weight`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      })
         .then(response => response.json())
         .then(data => {
           console.log(data);
@@ -59,7 +63,8 @@
           console.error(error);
           alert('Failed to add weight');
         });
-      });
-    </script>
-  </body>
+    });
+  </script>
+</body>
+
 </html>

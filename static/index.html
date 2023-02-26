@@ -38,13 +38,17 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-
+    // when deploying on a server, the api path could be https://server.com/app-1-path/api
+    // and we'd call it from https://server.com/app-1-path/ or https://server.com/app-1-path/index.html
+    // or https://server.com/app-1-path/subpage/page1.html
     let subpaths = window.location.pathname.split('/');
     let subpath = '';
     if (subpaths && subpaths.length > 0) {
       subpath = subpath + subpaths[0];
       if (subpaths[0] == '' && subpaths.length > 1) {
-        subpath = subpath + '/' + subpaths[1];
+        if (!subpaths[1].endsWith('.html')) {
+          subpath = subpath + '/' + subpaths[1];
+        }
       }
     }
 
