@@ -2,7 +2,7 @@ pub mod models;
 pub mod schema;
 
 use chrono::NaiveDate;
-use models::{NewWeight, Weight};
+pub use models::{NewWeight, Weight};
 
 use diesel::{prelude::*, SqliteConnection};
 use dotenv::dotenv;
@@ -130,6 +130,37 @@ pub fn weights_between_dates(
         .load::<Weight>(conn)
 }
 
+/// Returns a vector of weights between two given dates, with additional interpolated weights added
+/// to fill gaps between the actual weights. The interpolated weights are calculated by linearly
+/// interpolating between adjacent actual weights.
+///
+/// # Arguments
+///
+/// * `conn` - The connection to the SQLite database
+/// * `start_date` - The starting date for the weight range (inclusive)
+/// * `end_date` - The ending date for the weight range (inclusive)
+///
+/// # Returns
+///
+/// A `QueryResult` with a vector of tuples, where the first element of the tuple is a `Weight`
+/// struct representing the actual or interpolated weight, and the second element is a boolean
+/// indicating whether the weight is interpolated or not.
+///
+/// # Examples
+///
+/// ```rust
+/// use rs_weight_tracker::Weight;
+/// use chrono::{NaiveDate};
+///
+/// let mut conn = rs_weight_tracker::establish_connection();
+/// let start_date = NaiveDate::from_ymd(2021, 1, 1);
+/// let end_date = NaiveDate::from_ymd(2021, 1, 31);
+///
+/// let weights = rs_weight_tracker::weights_between_dates_with_interpolation(&mut conn, start_date, end_date);
+/// ```
+///
+/// This will return a vector of weights between the 1st and 31st of January 2021, with additional
+/// interpolated weights added to fill gaps between the actual weights.
 pub fn weights_between_dates_with_interpolation(
     conn: &mut SqliteConnection,
     start_date: NaiveDate,
