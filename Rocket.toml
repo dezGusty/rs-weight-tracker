@@ -1,7 +1,0 @@
-
-[debug]
-port = 14280
-
-
-[release]
-port = 14280

@@ -7,11 +7,12 @@ use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
 use chrono::NaiveDate;
+use dotenv::dotenv;
 use serde::Deserialize;
 use serde_json::json;
+use std::env;
 
-// use serde_json::json;
-use tower_http::services::{ServeDir};
+use tower_http::services::ServeDir;
 
 #[derive(Debug, Deserialize)]
 pub struct AddWeightPayload {
@@ -26,9 +27,7 @@ struct Interval {
     days: u32,
 }
 
-async fn rolling_average(params: Query<Interval>) -> impl IntoResponse
-//Result<serde_json::Value, tower::BoxError>
-{
+async fn rolling_average(params: Query<Interval>) -> impl IntoResponse {
     let interval: Interval = params.0;
 
     let start_date = NaiveDate::parse_from_str(&interval.start_date, "%Y-%m-%d").unwrap();
@@ -60,31 +59,36 @@ async fn rolling_average(params: Query<Interval>) -> impl IntoResponse
         .collect::<Vec<serde_json::Value>>();
 
     (StatusCode::OK, Json(result))
-    // Ok(json!(result))
 }
 
-async fn add_weight(
-    payload: axum::extract::Json<AddWeightPayload>,
-) -> impl IntoResponse {
-    // Result<Value, tower::BoxError> {
+async fn add_weight(payload: axum::extract::Json<AddWeightPayload>) -> impl IntoResponse {
     let mut conn = rs_weight_tracker::establish_connection();
-    // let payload::AddWeightPayload = payload.into();
 
     if let Ok(changed_entries_count) = rs_weight_tracker::upsert_weight_for_date(
         &mut conn,
         payload.weight_value,
         payload.measurement_date.clone(),
     ) {
-        (StatusCode::CREATED, Json(json!({ "status": "ok", "rows": changed_entries_count })))
-        // Ok(json!({ "status": "ok", "rows": changed_entries_count }))
+        (
+            StatusCode::CREATED,
+            Json(json!({ "status": "ok", "rows": changed_entries_count })),
+        )
     } else {
-        (StatusCode::CREATED, Json(json!({ "status": "ok", "rows": 0 })))
-        // Ok(json!({ "status": "ok", "rows": 0 }))
+        (
+            StatusCode::CREATED,
+            Json(json!({ "status": "ok", "rows": 0 })),
+        )
     }
 }
 
 #[tokio::main]
 async fn main() {
+    dotenv().ok();
+    let port_num: String = env::var("SERVER_PORT_NUM").expect("SERVER_PORT_NUM must be set");
+    let port_num: u16 = port_num
+        .parse::<u16>()
+        .expect("Invalid SERVER_PORT_NUM in environment");
+
     let serve_dir_from_static = ServeDir::new("static");
 
     let app = Router::new()
@@ -92,10 +96,7 @@ async fn main() {
         .route("/api/add_weight", post(add_weight))
         .nest_service("/", serve_dir_from_static);
 
-    // let app = ServiceBuilder::new().buffer(100, 10).service(app);
-
-    // let addr = SocketAddr::from(([0, 0, 0, 0], 12480));
-    let addr = SocketAddr::from(([127, 0, 0, 1], 12480));
+    let addr = SocketAddr::from(([127, 0, 0, 1], port_num));
     println!("Server running on {}", addr);
 
     axum::Server::bind(&addr)
