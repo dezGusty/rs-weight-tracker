@@ -1,55 +1,76 @@
+/* Font styling */
 body {
-  font-family: Arial, sans-serif;
+  font-family: sans-serif;
 }
 
-h1 {
+/* Header styling */
+header {
+  background-color: orange;
+  color: white;
+  padding: 20px;
   text-align: center;
 }
 
+header a {
+  color: white;
+  text-decoration: none;
+}
+
+/* Form styling */
 form {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  margin-top: 20px;
+  margin: 20px 0;
 }
 
-form label {
-  margin-top: 10px;
+label {
+  font-weight: bold;
 }
 
-form input[type="date"],
-form input[type="number"],
-form button {
-  margin: 5px;
-  padding: 5px;
-  border-radius: 5px;
+input[type=date],
+input[type=number] {
+  border: 1px solid gray;
+  border-radius: 3px;
+  padding: 8px;
+  margin-bottom: 10px;
+}
+
+button[type=submit] {
+  background-color: orange;
+  color: white;
   border: none;
-  background-color: #eee;
-  font-size: 16px;
-}
-
-form button {
-  background-color: #2f80ed;
-  color: #fff;
+  border-radius: 3px;
+  padding: 8px;
   cursor: pointer;
 }
 
-table {
-  border-collapse: collapse;
-  margin-top: 20px;
-  margin-bottom: 20px;
+button[type=submit]:hover {
+  background-color: #ff8300;
 }
 
-th,
-td {
-  border: 1px solid black;
-  padding: 5px;
-  text-align: center;
-}
-
+/* Chart styling */
 #chart {
-  width: 80%;
-  margin: auto;
-  margin-top: 20px;
-  margin-bottom: 20px;
+  width: 100%;
+  max-width: 800px;
+  height: 400px;
+  margin: 20px 0;
+}
+
+/* Table styling */
+#result-table {
+  border-collapse: collapse;
+  margin: 20px 0;
+  width: 100%;
+  max-width: 800px;
+}
+
+#result-table th,
+#result-table td {
+  border: 1px solid gray;
+  padding: 10px;
+}
+
+#result-table th {
+  background-color: orange;
+  color: white;
 }
