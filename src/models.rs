@@ -10,7 +10,7 @@ pub struct Weight {
 }
 
 #[derive(Insertable, Debug)]
-#[table_name = "weights"]
+#[diesel(table_name = weights)]
 pub struct NewWeight {
     pub weight_value: f64,
     pub measurement_date: NaiveDate,
