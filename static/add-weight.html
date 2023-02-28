@@ -24,6 +24,13 @@
   </form>
 
   <script>
+    const currentDate = new Date();
+    // Format dates as "yyyy-MM-dd"
+    const currentDateString = currentDate.toISOString().slice(0, 10);
+    // Set input values
+    const measurementDateInput = document.getElementById("measurement-date");
+    measurementDateInput.value = currentDateString;
+    
     // when deploying on a server, the api path could be https://server.com/app-1-path/api
     // and we'd call it from https://server.com/app-1-path/ or https://server.com/app-1-path/index.html
     // or https://server.com/app-1-path/subpage/page1.html
