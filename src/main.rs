@@ -1,12 +1,17 @@
-#[macro_use]
-extern crate rocket;
+use std::net::SocketAddr;
 
+use axum::extract::Query;
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
+use axum::routing::{get, post};
+use axum::Json;
+use axum::Router;
 use chrono::NaiveDate;
-use rocket::fs::{relative, FileServer};
-use rocket::serde::json::Json;
 use serde::Deserialize;
 use serde_json::json;
-use serde_json::Value;
+
+// use serde_json::json;
+use tower_http::services::{ServeDir};
 
 #[derive(Debug, Deserialize)]
 pub struct AddWeightPayload {
@@ -14,19 +19,29 @@ pub struct AddWeightPayload {
     pub measurement_date: String,
 }
 
-#[get("/rolling_average?<start_date>&<end_date>&<days>")]
-fn rolling_average(
+#[derive(Debug, Deserialize)]
+struct Interval {
     start_date: String,
     end_date: String,
     days: u32,
-) -> Json<Vec<serde_json::Value>> {
-    let start_date = NaiveDate::parse_from_str(&start_date, "%Y-%m-%d").unwrap();
-    let end_date = NaiveDate::parse_from_str(&end_date, "%Y-%m-%d").unwrap();
+}
+
+async fn rolling_average(params: Query<Interval>) -> impl IntoResponse
+//Result<serde_json::Value, tower::BoxError>
+{
+    let interval: Interval = params.0;
+
+    let start_date = NaiveDate::parse_from_str(&interval.start_date, "%Y-%m-%d").unwrap();
+    let end_date = NaiveDate::parse_from_str(&interval.end_date, "%Y-%m-%d").unwrap();
 
     let mut conn = rs_weight_tracker::establish_connection();
-    let averages =
-        rs_weight_tracker::rolling_average_between_dates(&mut conn, start_date, end_date, days)
-            .unwrap();
+    let averages = rs_weight_tracker::rolling_average_between_dates(
+        &mut conn,
+        start_date,
+        end_date,
+        interval.days,
+    )
+    .unwrap();
 
     let result = averages
         .into_iter()
@@ -44,28 +59,47 @@ fn rolling_average(
         })
         .collect::<Vec<serde_json::Value>>();
 
-    Json(result)
+    (StatusCode::OK, Json(result))
+    // Ok(json!(result))
 }
 
-#[post("/add_weight", format = "json", data = "<payload>")]
-fn add_weight(payload: Json<AddWeightPayload>) -> Value {
+async fn add_weight(
+    payload: axum::extract::Json<AddWeightPayload>,
+) -> impl IntoResponse {
+    // Result<Value, tower::BoxError> {
     let mut conn = rs_weight_tracker::establish_connection();
-    let Json(payload) = payload;
+    // let payload::AddWeightPayload = payload.into();
 
     if let Ok(changed_entries_count) = rs_weight_tracker::upsert_weight_for_date(
         &mut conn,
         payload.weight_value,
-        payload.measurement_date,
+        payload.measurement_date.clone(),
     ) {
-        json!({ "status": "ok", "rows": changed_entries_count })
+        (StatusCode::CREATED, Json(json!({ "status": "ok", "rows": changed_entries_count })))
+        // Ok(json!({ "status": "ok", "rows": changed_entries_count }))
     } else {
-        json!({ "status": "ok", "rows": 0 })
+        (StatusCode::CREATED, Json(json!({ "status": "ok", "rows": 0 })))
+        // Ok(json!({ "status": "ok", "rows": 0 }))
     }
 }
 
-#[rocket::launch]
-fn rocket() -> _ {
-    rocket::build()
-        .mount("/", FileServer::from(relative!("static")))
-        .mount("/api", routes![rolling_average, add_weight])
+#[tokio::main]
+async fn main() {
+    let serve_dir_from_static = ServeDir::new("static");
+
+    let app = Router::new()
+        .route("/api/rolling_average", get(rolling_average))
+        .route("/api/add_weight", post(add_weight))
+        .nest_service("/", serve_dir_from_static);
+
+    // let app = ServiceBuilder::new().buffer(100, 10).service(app);
+
+    // let addr = SocketAddr::from(([0, 0, 0, 0], 12480));
+    let addr = SocketAddr::from(([127, 0, 0, 1], 12480));
+    println!("Server running on {}", addr);
+
+    axum::Server::bind(&addr)
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
 }

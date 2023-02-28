@@ -1,0 +1,76 @@
+/* Font styling */
+body {
+  font-family: sans-serif;
+}
+
+/* Header styling */
+header {
+  background-color: orange;
+  color: white;
+  padding: 20px;
+  text-align: center;
+}
+
+header a {
+  color: white;
+  text-decoration: none;
+}
+
+/* Form styling */
+form {
+  display: flex;
+  flex-direction: column;
+  margin: 20px 0;
+}
+
+label {
+  font-weight: bold;
+}
+
+input[type=date],
+input[type=number] {
+  border: 1px solid gray;
+  border-radius: 3px;
+  padding: 8px;
+  margin-bottom: 10px;
+}
+
+button[type=submit] {
+  background-color: orange;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  padding: 8px;
+  cursor: pointer;
+}
+
+button[type=submit]:hover {
+  background-color: #ff8300;
+}
+
+/* Chart styling */
+#chart {
+  width: 100%;
+  max-width: 800px;
+  height: 400px;
+  margin: 20px 0;
+}
+
+/* Table styling */
+#result-table {
+  border-collapse: collapse;
+  margin: 20px 0;
+  width: 100%;
+  max-width: 800px;
+}
+
+#result-table th,
+#result-table td {
+  border: 1px solid gray;
+  padding: 10px;
+}
+
+#result-table th {
+  background-color: orange;
+  color: white;
+}
