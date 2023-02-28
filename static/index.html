@@ -41,6 +41,20 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
+    // Get current date and subtract 3 weeks (21 days)
+    const currentDate = new Date();
+    const threeWeeksAgo = new Date(currentDate.getTime() - (21 * 24 * 60 * 60 * 1000));
+
+    // Format dates as "yyyy-MM-dd"
+    const currentDateString = currentDate.toISOString().slice(0, 10);
+    const threeWeeksAgoString = threeWeeksAgo.toISOString().slice(0, 10);
+
+    // Set input values
+    const startDateInput = document.getElementById("start-date");
+    const endDateInput = document.getElementById("end-date");
+    startDateInput.value = threeWeeksAgoString;
+    endDateInput.value = currentDateString;
+
     // when deploying on a server, the api path could be https://server.com/app-1-path/api
     // and we'd call it from https://server.com/app-1-path/ or https://server.com/app-1-path/index.html
     // or https://server.com/app-1-path/subpage/page1.html
@@ -56,6 +70,9 @@
     }
 
     let baseUrl = window.location.origin + subpath;
+    if (baseUrl.endsWith('/')) {
+      baseUrl = baseUrl.substring(0, baseUrl.length - 1);
+    }
 
     const form = document.querySelector('form');
     const tableBody = document.querySelector('table tbody');

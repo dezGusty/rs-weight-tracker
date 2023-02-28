@@ -5,7 +5,7 @@ body {
 
 /* Header styling */
 header {
-  background-color: orange;
+  background-color: sienna;
   color: white;
   padding: 20px;
   text-align: center;
@@ -36,7 +36,7 @@ input[type=number] {
 }
 
 button[type=submit] {
-  background-color: orange;
+  background-color: sienna;
   color: white;
   border: none;
   border-radius: 3px;
@@ -51,7 +51,7 @@ button[type=submit]:hover {
 /* Chart styling */
 #chart {
   width: 100%;
-  max-width: 800px;
+  /* max-width: 800px; */
   height: 400px;
   margin: 20px 0;
 }
@@ -71,6 +71,6 @@ button[type=submit]:hover {
 }
 
 #result-table th {
-  background-color: orange;
+  background-color: sienna;
   color: white;
 }

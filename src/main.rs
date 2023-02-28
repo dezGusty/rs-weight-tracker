@@ -97,7 +97,7 @@ async fn main() {
         .nest_service("/", serve_dir_from_static);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], port_num));
-    println!("Server running on {}", addr);
+    println!("Server running on http://{}", addr);
 
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
