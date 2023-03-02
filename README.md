@@ -69,6 +69,14 @@ Covers:
 
 Can be found here: [session-4](./docs/session-4.md)
 
+### Session 5
+
+- fix issue with Chart (re)creation in front-end.
+- add weight functionality (POST on back-end, full page in front-end)
+- refactoring, removing use of deprecated functions
+
+Can be found here: [session-5](./docs/session-5.md)
+
 ## Setting up locally
 
 You will need the prerequisites.
