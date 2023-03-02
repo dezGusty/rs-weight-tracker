@@ -84,6 +84,14 @@ Can be found here: [session-5](./docs/session-5.md)
 
 Can be found here: [session-6](./docs/session-6.md)
 
+### Session 7
+
+- migration to Axum (a different library).
+- CSS styling.
+- auto-initialize date fields to {3 weeks ago .. today}
+
+Can be found here: [session-7](./docs/session-7.md)
+
 ## Setting up locally
 
 You will need the prerequisites.
