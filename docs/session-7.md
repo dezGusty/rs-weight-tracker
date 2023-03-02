@@ -684,7 +684,7 @@ canvas {
 }
 ```
 
-You can add this CSS to the static/css/style.css file and include it in the index.html file using the following line in the <head> section:
+You can add this CSS to the static/css/style.css file and include it in the index.html file using the following line in the `<head>` section:
 
 ```html
 
