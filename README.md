@@ -77,6 +77,13 @@ Can be found here: [session-4](./docs/session-4.md)
 
 Can be found here: [session-5](./docs/session-5.md)
 
+### Session 6
+
+- documentation (barely).
+- validation (floating point numbers) for weights.
+
+Can be found here: [session-6](./docs/session-6.md)
+
 ## Setting up locally
 
 You will need the prerequisites.
