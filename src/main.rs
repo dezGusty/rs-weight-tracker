@@ -123,7 +123,7 @@ async fn main() {
                 // it is required to add ".allow_headers([http::header::CONTENT_TYPE])"
                 // or see this issue https://github.com/tokio-rs/axum/issues/849
                 CorsLayer::new()
-                    .allow_origin(local_address_for_cors.parse::<HeaderValue>().unwrap())
+                    .allow_origin(local_address_for_cors.parse::<HeaderValue>().expect("Can enable CORS for this address."))
                     .allow_methods([Method::GET, Method::POST])
                     .allow_headers([http::header::CONTENT_TYPE, http::header::AUTHORIZATION]),
             );
