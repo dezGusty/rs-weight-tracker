@@ -5,7 +5,7 @@ use chrono::NaiveDate;
 pub use models::{NewWeight, Weight};
 
 use diesel::{prelude::*, SqliteConnection};
-use dotenv::dotenv;
+use dotenvy::dotenv;
 use std::{env, fmt};
 
 pub fn establish_connection() -> SqliteConnection {

@@ -1,4 +1,5 @@
 use std::net::SocketAddr;
+use std::path::PathBuf;
 
 use axum::extract::Query;
 use axum::http::{self, HeaderValue, Method, StatusCode};
@@ -7,7 +8,7 @@ use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
 use chrono::NaiveDate;
-use dotenv::dotenv;
+use dotenvy::dotenv;
 use serde::Deserialize;
 use serde_json::json;
 use std::env;
@@ -81,9 +82,30 @@ async fn add_weight(payload: axum::extract::Json<AddWeightPayload>) -> impl Into
     }
 }
 
+/// Load the local.env file if it exists, and then load the .env file.
+pub fn load_dotenv() -> Option<PathBuf> {
+    let local_file_result = dotenvy::from_filename("local.env");
+
+    match &local_file_result {
+        Ok(path) => {
+            println!("Loaded local.env file from {:?}", path);
+            return local_file_result.ok();
+        }
+        Err(e) => {
+            println!(
+                "No local.env file found, or error reading it. Skipping: {:?}",
+                e
+            );
+        }
+    }
+
+    dotenv().ok()
+}
+
 #[tokio::main]
 async fn main() {
-    dotenv().ok();
+    load_dotenv();
+
     let port_num_backend: String =
         env::var("SERVER_BACKEND_PORT_NUM").expect("SERVER_BACKEND_PORT_NUM must be set");
     let port_num_backend: u16 = port_num_backend
@@ -109,9 +131,26 @@ async fn main() {
     };
 
     let backend = async {
-        // let local_address_for_cors = format!("http://localhost:{}", port_num_backend);
         let local_address_for_cors: String =
-            env::var("CORS_SETTING_FOR_BACKEND").expect("CORS_SETTING_FOR_BACKEND must be set");
+            env::var("CORS_ALLOWED_ORIGINS").expect("CORS_ALLOWED_ORIGINS must be set");
+        let split_cors_addresses: Vec<String> = local_address_for_cors
+            .split(',')
+            .map(String::from)
+            .collect();
+
+        for address in &split_cors_addresses {
+            println!("Will add address {} in CORS allowed_origin list", address);
+        }
+
+        let allowed_origins: Vec<HeaderValue> = split_cors_addresses
+            .iter()
+            .map(|address| {
+                address
+                    .parse::<HeaderValue>()
+                    .expect("Can enable CORS for this address.")
+            })
+            .collect();
+
         let app = Router::new()
             .route("/api/rolling_average", get(rolling_average))
             .route("/api/add_weight", post(add_weight))
@@ -123,7 +162,7 @@ async fn main() {
                 // it is required to add ".allow_headers([http::header::CONTENT_TYPE])"
                 // or see this issue https://github.com/tokio-rs/axum/issues/849
                 CorsLayer::new()
-                    .allow_origin(local_address_for_cors.parse::<HeaderValue>().expect("Can enable CORS for this address."))
+                    .allow_origin(allowed_origins)
                     .allow_methods([Method::GET, Method::POST])
                     .allow_headers([http::header::CONTENT_TYPE, http::header::AUTHORIZATION]),
             );
@@ -135,17 +174,4 @@ async fn main() {
     };
 
     tokio::join!(frontend, backend);
-
-    // let app = Router::new()
-    //     .route("/api/rolling_average", get(rolling_average))
-    //     .route("/api/add_weight", post(add_weight))
-    //     .nest_service("/", serve_dir_from_static);
-
-    // let addr = SocketAddr::from(([127, 0, 0, 1], port_num_backend));
-    // println!("Server running on http://{}", addr);
-
-    // axum::Server::bind(&addr)
-    //     .serve(app.into_make_service())
-    //     .await
-    //     .unwrap();
 }
