@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 
 use axum::extract::Query;
-use axum::http::StatusCode;
+use axum::http::{self, HeaderValue, Method, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::Json;
@@ -12,7 +12,7 @@ use serde::Deserialize;
 use serde_json::json;
 use std::env;
 
-use tower_http::services::ServeDir;
+use tower_http::{cors::CorsLayer, services::ServeDir};
 
 #[derive(Debug, Deserialize)]
 pub struct AddWeightPayload {
@@ -84,23 +84,68 @@ async fn add_weight(payload: axum::extract::Json<AddWeightPayload>) -> impl Into
 #[tokio::main]
 async fn main() {
     dotenv().ok();
-    let port_num: String = env::var("SERVER_PORT_NUM").expect("SERVER_PORT_NUM must be set");
-    let port_num: u16 = port_num
+    let port_num_backend: String =
+        env::var("SERVER_BACKEND_PORT_NUM").expect("SERVER_BACKEND_PORT_NUM must be set");
+    let port_num_backend: u16 = port_num_backend
         .parse::<u16>()
-        .expect("Invalid SERVER_PORT_NUM in environment");
+        .expect("Invalid SERVER_BACKEND_PORT_NUM in environment");
+
+    let port_num_frontend: String =
+        env::var("SERVER_FRONTEND_PORT_NUM").expect("SERVER_FRONTEND_PORT_NUM must be set");
+    let port_num_frontend: u16 = port_num_frontend
+        .parse::<u16>()
+        .expect("Invalid SERVER_FRONTEND_PORT_NUM in environment");
 
     let serve_dir_from_static = ServeDir::new("static");
 
-    let app = Router::new()
-        .route("/api/rolling_average", get(rolling_average))
-        .route("/api/add_weight", post(add_weight))
-        .nest_service("/", serve_dir_from_static);
+    let frontend = async {
+        let app = Router::new().nest_service("/", serve_dir_from_static);
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], port_num));
-    println!("Server running on http://{}", addr);
+        let addr = SocketAddr::from(([127, 0, 0, 1], port_num_frontend));
+        axum::Server::bind(&addr)
+            .serve(app.into_make_service())
+            .await
+            .unwrap();
+    };
 
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    let backend = async {
+        // let local_address_for_cors = format!("http://localhost:{}", port_num_backend);
+        let local_address_for_cors: String =
+            env::var("CORS_SETTING_FOR_BACKEND").expect("CORS_SETTING_FOR_BACKEND must be set");
+        let app = Router::new()
+            .route("/api/rolling_average", get(rolling_average))
+            .route("/api/add_weight", post(add_weight))
+            .layer(
+                // see https://docs.rs/tower-http/latest/tower_http/cors/index.html
+                // for more details
+                //
+                // pay attention that for some request types like posting content-type: application/json
+                // it is required to add ".allow_headers([http::header::CONTENT_TYPE])"
+                // or see this issue https://github.com/tokio-rs/axum/issues/849
+                CorsLayer::new()
+                    .allow_origin(local_address_for_cors.parse::<HeaderValue>().unwrap())
+                    .allow_methods([Method::GET, Method::POST])
+                    .allow_headers([http::header::CONTENT_TYPE, http::header::AUTHORIZATION]),
+            );
+        let addr = SocketAddr::from(([127, 0, 0, 1], port_num_backend));
+        axum::Server::bind(&addr)
+            .serve(app.into_make_service())
+            .await
+            .unwrap();
+    };
+
+    tokio::join!(frontend, backend);
+
+    // let app = Router::new()
+    //     .route("/api/rolling_average", get(rolling_average))
+    //     .route("/api/add_weight", post(add_weight))
+    //     .nest_service("/", serve_dir_from_static);
+
+    // let addr = SocketAddr::from(([127, 0, 0, 1], port_num_backend));
+    // println!("Server running on http://{}", addr);
+
+    // axum::Server::bind(&addr)
+    //     .serve(app.into_make_service())
+    //     .await
+    //     .unwrap();
 }
