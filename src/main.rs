@@ -11,6 +11,7 @@ use chrono::NaiveDate;
 use dotenvy::dotenv;
 use serde::Deserialize;
 use serde_json::json;
+use tower_http::trace::TraceLayer;
 use std::env;
 
 use tower_http::{cors::CorsLayer, services::ServeDir};
@@ -105,6 +106,7 @@ pub fn load_dotenv() -> Option<PathBuf> {
 #[tokio::main]
 async fn main() {
     load_dotenv();
+    tracing_subscriber::fmt::init();
 
     let port_num_backend: String =
         env::var("SERVER_BACKEND_PORT_NUM").expect("SERVER_BACKEND_PORT_NUM must be set");
@@ -121,7 +123,10 @@ async fn main() {
     let serve_dir_from_static = ServeDir::new("static");
 
     let frontend = async {
-        let app = Router::new().nest_service("/", serve_dir_from_static);
+        let app = Router::new()
+            .nest_service("/", serve_dir_from_static)
+            .layer(TraceLayer::new_for_http());
+
 
         let addr = SocketAddr::from(([127, 0, 0, 1], port_num_frontend));
         axum::Server::bind(&addr)
@@ -165,7 +170,8 @@ async fn main() {
                     .allow_origin(allowed_origins)
                     .allow_methods([Method::GET, Method::POST])
                     .allow_headers([http::header::CONTENT_TYPE, http::header::AUTHORIZATION]),
-            );
+            )
+            .layer(TraceLayer::new_for_http());
         let addr = SocketAddr::from(([127, 0, 0, 1], port_num_backend));
         axum::Server::bind(&addr)
             .serve(app.into_make_service())
